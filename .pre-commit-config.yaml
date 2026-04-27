@@ -1,0 +1,41 @@
+# Local pre-commit hooks.
+#
+# These mirror the gates in .github/workflows/ci-backend.yml and
+# ci-frontend.yml so a failure shows up on the developer's machine in seconds
+# rather than on a runner in minutes. If a hook here and a CI step disagree,
+# CI is the authority and this file is the bug.
+#
+#   pip install pre-commit && pre-commit install
+#
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-merge-conflict
+      - id: check-yaml
+      - id: check-added-large-files
+        args: ["--maxkb=512"]
+      - id: detect-private-key
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.8
+    hooks:
+      # Matches CI exactly: `ruff check app tests` from backend/.
+      - id: ruff
+        name: ruff (backend)
+        files: ^backend/(app|tests)/
+        args: ["--force-exclude"]
+
+  - repo: local
+    hooks:
+      # Guard against the one mistake that is expensive to unwind: editing a
+      # migration that has already been applied to an environment. Alembic
+      # revisions are append-only by convention on this project.
+      - id: no-edited-migrations
+        name: applied migrations are append-only
+        entry: scripts/check-migrations.sh
+        language: script
+        files: ^backend/app/db/migrations/versions/
+        pass_filenames: true
