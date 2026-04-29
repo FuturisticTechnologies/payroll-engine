@@ -1,0 +1,53 @@
+/* --------------------------------------------------------------------------
+   PayrollFuturistic — global styles
+   Milestone 1 baseline. Replaced with a proper design system in later
+   milestones (tokens, typography scale, dark mode, accessibility audit).
+   -------------------------------------------------------------------------- */
+
+:root {
+  --pf-color-bg: #f6f8fb;
+  --pf-color-surface: #ffffff;
+  --pf-color-ink: #0f172a;
+  --pf-color-ink-muted: #475569;
+  --pf-color-primary: #0b3c5d;
+  --pf-color-primary-strong: #072a43;
+  --pf-color-accent: #17b890;
+  --pf-color-border: #e2e8f0;
+  --pf-color-danger: #dc2626;
+
+  --pf-radius: 8px;
+  --pf-shadow: 0 1px 2px rgba(15, 23, 42, 0.06),
+               0 4px 12px rgba(15, 23, 42, 0.05);
+
+  --pf-font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto,
+             "Helvetica Neue", Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: var(--pf-font);
+  background: var(--pf-color-bg);
+  color: var(--pf-color-ink);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  color: var(--pf-color-primary);
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+button {
+  font-family: inherit;
+}
