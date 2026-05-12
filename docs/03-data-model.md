@@ -1,106 +1,179 @@
-# 03 — Data model
+# 03 - Data Model
 
-Milestone 1 establishes a minimum, typed data model that later milestones
-extend. No monetary tables land in this milestone — they arrive together
-with the calculation engines that populate them.
+Milestone 2 establishes the core employer, employee, RBAC and payroll framework
+models needed before the payroll calculation engine begins.
 
-## 1. Entity overview
+## 1. Entity Overview
 
+```text
+tenants
+  |-- employees
+  |     `-- employment_contracts
+  |-- user_tenant_roles -- users
+  |
+roles -- role_permissions -- permissions
+
+idempotency_keys store safe create responses per route.
+audit_logs remain append-only for operational evidence.
 ```
-┌───────────┐       ┌────────────┐       ┌────────────┐
-│   users   │       │ employees  │       │ audit_logs │
-└───────────┘       └────────────┘       └────────────┘
-      │                   │                    ▲
-      │  actor            │  entity            │
-      └───────────────────┴────────────────────┘
-```
 
-## 2. `users`
+## 2. `tenants`
 
-Application users: operators, payroll officers, employer admins, employees
-(self-service).
+Employer organisations. Tenant IDs are the isolation boundary for employee,
+contract and future payroll data.
 
 | Column | Type | Notes |
 |---|---|---|
-| `id` | `uuid` | PK, `gen_random_uuid()` |
-| `email` | `citext` | unique, case-insensitive |
+| `id` | `uuid` | Primary key |
+| `name` | `varchar(200)` | Display name |
+| `legal_name` | `varchar(255)` | Registered employer name |
+| `slug` | `varchar(80)` | Unique stable slug |
+| `company_registration_number` | `varchar(32)` | Nullable |
+| `paye_reference` | `varchar(32)` | HMRC PAYE reference |
+| `accounts_office_reference` | `varchar(32)` | HMRC accounts office reference |
+| `default_pay_frequency` | `varchar(20)` | `weekly`, `fortnightly`, `four_weekly`, `monthly` |
+| `status` | `varchar(20)` | `active` by default |
+| `created_at` / `updated_at` | `timestamptz` | Server-managed timestamps |
+
+Seeded default tenant: `snovasys-futuristic`.
+
+## 3. `users`
+
+Application users: Snovasys operators, payroll officers, employer admins and
+future employee self-service accounts.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `uuid` | Primary key |
+| `email` | `citext` | Unique, case-insensitive in Postgres |
 | `full_name` | `varchar(255)` | |
 | `hashed_password` | `varchar(255)` | bcrypt |
-| `role` | `varchar(32)` | `viewer` by default — replaced by RBAC in M2 |
+| `role` | `varchar(32)` | Coarse legacy field retained for compatibility |
 | `is_active` | `boolean` | |
 | `is_superuser` | `boolean` | |
-| `created_at` | `timestamptz` | server default `now()` |
-| `updated_at` | `timestamptz` | auto-updated |
+| `created_at` / `updated_at` | `timestamptz` | Server-managed timestamps |
 
-Indexes: `ix_users_email`, `uq_users_email`.
+RBAC authorization now uses `user_tenant_roles` rather than relying only on the
+legacy `users.role` value.
 
-## 3. `employees`
+## 4. RBAC Tables
 
-The payroll record for a person paid by an employer. Pay-affecting components
-land in later migrations.
+### `roles`
+
+System roles: `tenant_owner`, `payroll_admin`, `payroll_viewer`,
+`employee_self_service`.
+
+### `permissions`
+
+System permissions include `tenants:manage`, `rbac:manage`, `employees:read`,
+`employees:write`, `contracts:manage` and `payroll:run`.
+
+### `role_permissions`
+
+Many-to-many mapping between roles and permissions.
+
+### `user_tenant_roles`
+
+Tenant-scoped role assignment.
 
 | Column | Type | Notes |
 |---|---|---|
-| `id` | `uuid` | PK |
-| `first_name` | `varchar(100)` | |
-| `last_name` | `varchar(100)` | |
-| `email` | `citext` | unique |
-| `national_insurance_number` | `varchar(9)` | unique, HMRC format `AA123456A` |
-| `tax_code` | `varchar(10)` | default `1257L` |
-| `employment_start_date` | `date` | |
-| `job_title` | `varchar(150)` | nullable |
-| `created_at` / `updated_at` | `timestamptz` | |
+| `user_id` | `uuid` | FK to users |
+| `tenant_id` | `uuid` | FK to tenants |
+| `role_id` | `uuid` | FK to roles |
+| `is_active` | `boolean` | Supports deactivation without deletion |
 
-Indexes: `ix_employees_email`, `ix_employees_ni_number`, unique constraints
-on both.
+## 5. `employees`
+
+The payroll record for a person paid by an employer.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `uuid` | Primary key |
+| `tenant_id` | `uuid` | FK to tenants, required |
+| `employee_number` | `varchar(40)` | Unique per tenant |
+| `first_name` / `last_name` | `varchar` | Employee identity |
+| `email` | `citext` / `varchar(255)` | Unique per tenant |
+| `national_insurance_number` | `varchar(9)` | Unique per tenant |
+| `tax_code` | `varchar(10)` | Default `1257L` |
+| `ni_category` | `varchar(1)` | Default `A` |
+| `employment_start_date` | `date` | Required |
+| `employment_status` | `varchar(20)` | Default `active` |
+| `job_title` | `varchar(150)` | Nullable |
+| `created_at` / `updated_at` | `timestamptz` | Server-managed timestamps |
 
 Validation at the schema layer:
 
-- NI number matches `^[A-CEGHJ-PR-TW-Z]{2}\d{6}[A-D]$`, upper-cased and
-  whitespace-stripped on ingress.
+- NI number matches `^[A-CEGHJ-PR-TW-Z]{2}\d{6}[A-D]$`.
 - Tax code matches common UK patterns: `1257L`, `BR`, `D0`, `D1`, `NT`,
   K-codes and numeric suffix codes.
+- NI category is one of the supported HMRC category codes exposed by
+  `/api/v1/framework`.
 
-## 4. `audit_logs`
+## 6. `employment_contracts`
 
-Append-only, immutable. Rows describe *what happened*, *who caused it*,
-*when* and *what context was attached*.
+Contracts are the bridge from employee records into payroll calculation.
 
 | Column | Type | Notes |
 |---|---|---|
-| `id` | `uuid` | PK |
-| `occurred_at` | `timestamptz` | indexed |
-| `actor_user_id` | `uuid` | nullable (system events), indexed |
-| `actor_ip` | `varchar(45)` | IPv6-capable |
-| `event_type` | `varchar(100)` | e.g. `employee.created`, indexed |
-| `entity_type` | `varchar(100)` | e.g. `employee` |
-| `entity_id` | `varchar(100)` | string-form of the affected entity PK, indexed |
-| `payload` | `jsonb` | arbitrary structured context, default `{}` |
+| `tenant_id` | `uuid` | FK to tenants |
+| `employee_id` | `uuid` | FK to employees |
+| `contract_type` | `varchar(32)` | `permanent`, `fixed_term`, `apprentice`, `casual` |
+| `pay_frequency` | `varchar(20)` | Weekly/monthly framework code |
+| `annual_salary` | `numeric(14,2)` | Nullable for hourly/casual arrangements |
+| `weekly_hours` | `numeric(5,2)` | Nullable |
+| `effective_from` / `effective_to` | `date` | Contract date range |
+| `currency` | `varchar(3)` | `GBP` by default |
+| `is_primary` | `boolean` | Primary contract flag |
 
-Operational rules:
+Unique constraint: one contract per employee per `effective_from` date.
 
-- Writes only. Never updated or deleted via application code.
-- Retention: 7 years (to cover HMRC investigation windows).
-- Archived to cold storage after 12 months (Milestone 12+).
+## 7. `idempotency_keys`
 
-## 5. Upcoming entities (post-M1 preview)
+Stores create responses by `(key, method, path)` to make retries safe.
+Create endpoints reserve this row before writing the target resource and update
+the stored response before committing, so concurrent same-key retries replay
+the original response instead of racing the resource uniqueness checks.
 
-These are **not** present in the initial migration but are planned so the
-current schema does not block them:
+| Column | Type | Notes |
+|---|---|---|
+| `key` | `varchar(128)` | Client-supplied `Idempotency-Key` |
+| `method` / `path` | `varchar` | Route identity |
+| `request_hash` | `varchar(64)` | SHA-256 over method, path and payload |
+| `status_code` | `integer` | Original status |
+| `response_body` | `json/jsonb` | Original response |
+| `tenant_id` | `uuid` | Nullable tenant context |
+| `created_at` / `expires_at` | `timestamptz` | Expiry is reserved for retention cleanup |
 
-- `tenants` — employer organisations (introduces tenant_id everywhere)
-- `employment_contracts` — salary, hours, frequency, start/end
-- `pay_periods` — tax year / pay frequency calendar
-- `pay_runs` — a processed period for a tenant
-- `payslips` — per-employee output of a pay run
-- `deductions`, `earnings_lines`, `pension_contributions`
-- `tax_codes_history` — audit of tax code changes per employee
-- `ni_categories` — reference table refreshed annually
-- `statutory_payments` — SSP, SMP, SPP instances
-- `rti_submissions` — FPS / EPS envelope + HMRC response
-- `hmrc_credentials` — per-tenant OAuth tokens (encrypted at rest)
+Reusing the same key with a different payload returns `409 Conflict`.
 
-## 6. Money & decimals — rule
+## 8. Row-Level Security
 
-All monetary columns will be `NUMERIC(14, 2)`. All rates are `NUMERIC(6, 4)`.
-The code base will ban float arithmetic on money via lint rule in M2.
+Migration `20260501_0002` enables Postgres RLS policies for:
+
+- `tenants`
+- `employees`
+- `employment_contracts`
+- `user_tenant_roles`
+- `idempotency_keys`
+
+Tenant-scoped policies use `current_setting('app.tenant_id', true)` as the
+runtime tenant context. Auth dependencies set the tenant and superuser database
+settings before tenant-scoped ORM work runs.
+
+## 9. Upcoming Entities
+
+- `pay_periods`
+- `pay_runs`
+- `payslips`
+- `earnings_lines`
+- `deductions`
+- `tax_code_history`
+- `ni_reference_data`
+- `statutory_payments`
+- `pension_schemes`
+- `rti_submissions`
+- `hmrc_credentials`
+
+All monetary columns will use `NUMERIC(14,2)`. Rate columns will use fixed
+precision decimal types; float arithmetic is not allowed for payroll money.

@@ -1,99 +1,107 @@
-# 05 — HMRC compliance
+# 05 - HMRC Compliance
 
-PayrollFuturistic is a UK-only product. Every calculation, submission and
-statutory payment is anchored to HMRC's rules for the current and previous
-tax years.
+PayrollFuturistic is a UK-only payroll product. Every calculation, submission
+and statutory payment is anchored to HMRC rules for the relevant tax year.
 
-## 1. Scope of HMRC obligations
+## 1. Scope of HMRC Obligations
 
 | Area | Capability | Landing milestone |
 |---|---|---|
-| PAYE income tax | Tax code handling, weekly/monthly, cumulative/non-cumulative | M4 |
-| National Insurance | Class 1 primary & secondary, categories A–X | M5 |
-| RTI — FPS | Full Payment Submission per pay run | M6 |
-| RTI — EPS | Employer Payment Summary, including no-pay periods | M7 |
-| RTI — corrections | Earlier Year Update (EYU) / year-to-date adjustments | M7 |
-| Statutory payments | SSP, SMP, SPP eligibility + payment | M8 |
-| Pension auto-enrolment | Assessment + contribution calculation | M9 |
+| PAYE income tax | Tax code handling, weekly/monthly and cumulative/non-cumulative logic | M4 |
+| National Insurance | Class 1 primary/secondary, categories and director rules | M5 |
+| RTI FPS | Full Payment Submission per pay run | M6 |
+| RTI EPS | Employer Payment Summary, including no-pay periods | M7 |
+| RTI corrections | Year-to-date adjustments and reconciliation | M7 |
+| Statutory payments | SSP, SMP and SPP eligibility and payment | M8 |
+| Pension auto-enrolment | Assessment and contribution calculation | M9 |
 | Year-end | P60 for active employees, P45 for leavers | M10 |
-| Tax tables refresh | Annual refresh pipeline, effective-dated | Continuous |
+| Tax table refresh | Annual effective-dated reference update | Continuous |
 
-## 2. Tax codes handled
+## 2. Tax Codes Handled
 
 | Code pattern | Meaning | Treatment |
 |---|---|---|
 | `1257L`, `####L` | Standard personal allowance | Apply allowance, cumulative by default |
 | `BR` | Basic rate on all income | Flat 20% |
-| `D0` / `D1` | Higher / additional rate on all | Flat 40% / 45% |
+| `D0` / `D1` | Higher / additional rate on all income | Flat 40% / 45% |
 | `NT` | No tax | No PAYE deducted |
-| `0T` | No allowance | All income taxed from first £ |
-| `K####` | Negative allowance | Reverse adjustment, capped at 50% cap |
-| `####L M1/W1 /X` | Non-cumulative (emergency) | Period-only calculation |
+| `0T` | No allowance | All income taxed from first pound |
+| `K####` | Negative allowance | Reverse adjustment, capped by HMRC rules |
+| `####L M1/W1/X` | Non-cumulative emergency treatment | Period-only calculation |
 
-Milestone 1 validates the *format* of tax codes at the schema layer.
-Behaviour lands with the PAYE engine in M4.
+Current implementation validates tax-code format at the schema layer. PAYE
+behaviour lands with the calculation engine in M4.
 
-## 3. NI categories
+## 3. NI Categories
+
+Milestone 2 stores `ni_category` on employees and exposes category reference
+data through `/api/v1/framework`.
 
 | Category | Description |
 |---|---|
-| A | Standard |
-| B | Married women / widows reduced rate |
-| C | Over state pension age |
+| A | Standard employee |
+| B | Married women and widows reduced rate |
+| C | Employees over State Pension age |
 | H | Apprentice under 25 |
-| J | Deferred (has another job) |
-| M | Under 21 |
-| V | Veterans first 12 months |
-| X | No NI payable |
-| Z | Deferred, under 21 |
+| J | Employee can defer National Insurance |
+| M | Employee under 21 |
+| V | Veteran in first civilian job |
+| Z | Employee under 21 can defer National Insurance |
 
-These become the `ni_categories` reference table in M5.
+The M5 calculation milestone expands this into annual effective-dated NI
+reference data and contribution rules.
 
-## 4. RTI submission envelope
+## 4. Pay Frequencies
 
-FPS and EPS submissions will be generated as HMRC-compliant XML envelopes,
-signed and transmitted via the HMRC Transaction Engine API.
+Milestone 2 supports payroll framework setup for:
 
-Key design decisions:
+- Weekly, 52 periods per tax year.
+- Fortnightly, 26 periods per tax year.
+- Four-weekly, 13 periods per tax year.
+- Monthly, 12 periods per tax year.
 
-- One `rti_submissions` row per envelope, with `status` in
-  `{pending, submitted, accepted, rejected, errored}`.
-- Every transition is audit-logged.
-- Outbound calls go through a circuit breaker with exponential backoff.
-- HMRC OAuth credentials live in Vault, never in the database or logs.
-- All PII in RTI envelopes is redacted from logs.
+These frequencies are stored on tenants as a default and on employment
+contracts as the calculation basis for later pay runs.
 
-## 5. Statutory payments — eligibility and caps
+## 5. RTI Submission Envelope
 
-Full rule tables arrive with the calculation engines. Placeholder rules:
+FPS and EPS submissions will be generated as HMRC-compliant envelopes,
+transmitted via HMRC APIs and tracked with full audit history.
 
-- **SSP** — up to 28 weeks; qualifying day rules; waiting days 1–3;
-  minimum 4 consecutive days of incapacity; earnings threshold check.
-- **SMP** — 39 weeks; 90% of AWE for first 6 weeks, then lower of 90% AWE
-  or statutory flat rate for 33 weeks.
-- **SPP** — up to 2 weeks at statutory rate; continuous-employment test.
+Design rules:
 
-## 6. Year-end deliverables
+- One `rti_submissions` row per outbound envelope.
+- Status lifecycle: pending, submitted, accepted, rejected, errored.
+- Every status transition is audit-logged.
+- Outbound calls use retry, backoff and reconciliation.
+- HMRC OAuth credentials live in a vault, never in source control or logs.
+- PII in RTI payloads is redacted from application logs.
+
+## 6. Statutory Payments
+
+Full rule tables arrive with the calculation engines. The planned coverage is:
+
+- SSP: qualifying days, waiting days, earnings threshold and 28-week cap.
+- SMP: average weekly earnings, 90% first period and statutory flat-rate period.
+- SPP: qualifying relationship, employment test and statutory rate.
+
+## 7. Year-End Deliverables
 
 | Artefact | Trigger |
 |---|---|
-| P60 | For employees active at 5 April |
-| P45 | On leaver event |
-| FPS final | Marked as "Final submission for tax year" |
+| P60 | Employee active at 5 April |
+| P45 | Employee leaver event |
+| FPS final | Final submission for tax year |
 
-## 7. Tax year and period handling
+## 8. Tax Year and Period Handling
 
-- UK tax year: 6 April – 5 April.
-- Pay frequency supported: weekly, two-weekly, four-weekly, monthly.
-- Tax week / tax month is computed from the tax year start.
-- Every monetary calculation records the `tax_year`, `tax_period_type` and
-  `tax_period_number` against the output row — enabling full reconciliation.
+- UK tax year: 6 April to 5 April.
+- Every calculation records tax year, period type and period number.
+- Monetary outputs use decimal fixed precision and are reconciliation-friendly.
 
-## 8. Testing strategy for HMRC logic
+## 9. Testing Strategy for HMRC Logic
 
-- Deterministic golden-path tests with fixed inputs and expected outputs,
-  sourced from HMRC's published calculation examples.
-- Property-based tests via Hypothesis: gross pay ≥ net pay, monotonicity,
-  idempotency of pay runs with identical inputs.
-- Regression pack covering every tax year released.
-- End-to-end RTI dry-run against the HMRC sandbox before every prod deploy.
+- Golden-path tests from HMRC examples.
+- Property-based tests for invariants such as gross pay >= net pay.
+- Regression pack per tax year.
+- RTI sandbox dry-run before production submission support is enabled.
