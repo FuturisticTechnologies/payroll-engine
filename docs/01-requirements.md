@@ -1,4 +1,4 @@
-# 01 — Requirements
+# 01 - Requirements
 
 ## 1. Objective
 
@@ -7,104 +7,103 @@ regulations, statutory requirements and enterprise-grade operational standards.
 The platform must be robust, scalable, secure and compliant with UK payroll
 legislation.
 
-## 2. Scope of work
+## 2. Scope of Work
 
-### 2.1 Core payroll capabilities
+### 2.1 Core Payroll Capabilities
 
 | Capability | Description |
 |---|---|
-| Employee payroll processing | Monthly and weekly pay cycles |
+| Employee payroll processing | Monthly, weekly, fortnightly and four-weekly pay cycles |
 | PAYE calculations | Income tax per HMRC tax tables and tax codes |
-| National Insurance | NI categories A–X, Class 1 primary/secondary |
-| Pension auto-enrolment | UK-compliant schemes (NEST, People's Pension, etc.) |
-| Statutory payments | SSP (Sick), SMP (Maternity), SPP (Paternity) |
-| Tax codes & allowances | 1257L, BR, D0, D1, NT, K-codes, emergency codes |
-| Payslip generation | Digital payslips, downloadable PDF |
-| Deductions & adjustments | Pre-tax and post-tax, loans, advances, court orders |
+| National Insurance | NI categories, Class 1 primary/secondary and director rules |
+| Pension auto-enrolment | UK-compliant schemes such as NEST and People's Pension |
+| Statutory payments | SSP, SMP and SPP eligibility and payment calculations |
+| Tax codes and allowances | 1257L, BR, D0, D1, NT, K-codes and emergency codes |
+| Payslip generation | Digital payslips and downloadable PDF |
+| Deductions and adjustments | Pre-tax, post-tax, loans, advances and court orders |
 
-### 2.2 HMRC compliance & integrations
+### 2.2 HMRC Compliance and Integrations
 
 | Area | Deliverable |
 |---|---|
-| RTI FPS | Full Payment Submission, per pay run |
-| RTI EPS | Employer Payment Summary, monthly/period |
-| HMRC API integration | OAuth2 client, FPS/EPS submit, error reconciliation |
+| RTI FPS | Full Payment Submission per pay run |
+| RTI EPS | Employer Payment Summary per period |
+| HMRC API integration | OAuth2 client, FPS/EPS submit and error reconciliation |
 | Year-end processing | P60 generation for active employees |
 | Leaver processing | P45 issuance |
 | Legislation updates | Annual tax table refresh pipeline |
 
-### 2.3 System & platform features
+### 2.3 System and Platform Features
 
-- Role-based access control (admin, payroll officer, employer, employee)
-- Audit logs for every data-mutating action
-- Reporting and analytics: payroll summaries, liability reports, YTD
-- Integration capability with external HRMS and accounting platforms
-- Data security aligned with UK GDPR
+- Employer tenants with tenant-scoped employee and payroll data.
+- Role-based access control for Snovasys operators, tenant owners, payroll admins, viewers and employee self-service users.
+- Audit logs for every data-mutating action.
+- Reporting and analytics for payroll summaries, liabilities and year-to-date views.
+- Integration capability with external HRMS and accounting platforms.
+- Data security aligned with UK GDPR and OWASP ASVS L2.
 
-### 2.4 Engineering & delivery
-
-- Frontend and backend development
-- API-first architecture
-- Data pipelines and reporting structures
-- Automated testing and QA
-- CI/CD pipelines and deployment automation
-- Production deployment and stabilisation
-
-## 3. Non-functional requirements
+## 3. Non-Functional Requirements
 
 | Category | Target |
 |---|---|
-| Availability | ≥ 99.9% monthly (production) |
+| Availability | >= 99.9% monthly in production |
 | RTO / RPO | 1 hour / 15 minutes |
 | Concurrency | 10k concurrent employer sessions at steady state |
 | Payslip batch | 50k payslips per hour per tenant |
-| API latency | p95 < 300 ms for reads, < 800 ms for writes |
-| Security | OWASP ASVS L2; UK GDPR; ISO 27001-aligned controls |
-| Observability | Structured JSON logs, traces, metrics, alerting |
-| Auditability | Immutable append-only audit log, 7-year retention |
-| Localisation | English (UK), GBP, UK date/time, UK tax year boundaries |
+| API latency | p95 < 300 ms for reads, p95 < 800 ms for writes |
+| Security | OWASP ASVS L2, UK GDPR and ISO 27001-aligned controls |
+| Observability | Structured JSON logs, traces, metrics and alerting |
+| Auditability | Immutable append-only audit log with 7-year retention |
+| Localisation | English (UK), GBP, UK date/time and UK tax-year boundaries |
 
-## 4. Users and roles
+## 4. Users and Roles
 
-| Role | Description | Milestone 1 scope |
+| Role | Description | Milestone 2 scope |
 |---|---|---|
-| Super admin | Snovasys operator | User management stub |
-| Employer admin | Tenant owner | Read-only dashboard stub |
-| Payroll officer | Runs pay cycles | Schema in place, actions in M3 |
-| Employee (self-service) | Views own payslips | Model present, portal in M10 |
+| Super admin | Snovasys operator | Seeded local admin and tenant-owner assignment |
+| Tenant owner | Employer administrator | RBAC role and tenant mapping |
+| Payroll admin | Runs payroll operations | RBAC role and employee/contract permissions |
+| Payroll viewer | Read-only payroll stakeholder | RBAC role and read permission |
+| Employee self-service | Views own payslips and profile | RBAC role placeholder, portal in M10 |
 
-## 5. In scope for Milestone 1
+## 5. Delivered in Milestone 1
 
-- [x] Requirement document (this file)
-- [x] Architecture design ([02-architecture.md](./02-architecture.md))
-- [x] Data model baseline ([03-data-model.md](./03-data-model.md))
-- [x] Security & UK GDPR posture ([04-security-gdpr.md](./04-security-gdpr.md))
-- [x] HMRC compliance outline ([05-hmrc-compliance.md](./05-hmrc-compliance.md))
-- [x] API design conventions ([06-api-design.md](./06-api-design.md))
-- [x] Deployment plan ([07-deployment.md](./07-deployment.md))
-- [x] Runnable skeleton: FastAPI + PostgreSQL + Angular + Docker Compose
-- [x] Initial schema migration
-- [x] Health, meta, and employee scaffold endpoints
-- [x] CI pipelines for backend and frontend
+- Requirements, architecture, data model, security/GDPR, HMRC, API and deployment docs.
+- Runnable scaffold: FastAPI, PostgreSQL, Angular and Docker Compose.
+- Initial Alembic schema for users, employees and audit logs.
+- Health, readiness, meta, auth-login and employee scaffold endpoints.
+- Backend and frontend CI workflow foundations.
 
-## 6. Out of scope for Milestone 1
+## 6. Delivered in Milestone 2
 
-- PAYE / NI calculation engine (Milestone 3–5)
-- HMRC RTI submissions (Milestone 6–7)
-- Statutory payment engines (Milestone 8)
-- Pension auto-enrolment integrations (Milestone 9)
-- Payslip rendering, dashboards, audit UI (Milestone 10)
-- Full role-based access control beyond a single `role` field
-- Multi-tenant isolation (row-level security is planned for Milestone 2)
+- Employer tenant model and default Snovasys/Futuristic tenant seed.
+- RBAC models and bearer-token permission enforcement for M2 routes.
+- Tenant-scoped employee structure with employee number, NI category and employment status.
+- Employment contract model for pay frequency, contract type, salary, hours and effective dates.
+- Payroll framework catalog for pay frequencies, contract types, NI categories, roles and permissions.
+- Transactional create endpoint idempotency using `Idempotency-Key`.
+- Security hardening: CSP, frame protection, content sniffing protection, production HSTS and CSRF bootstrap/guard.
+- Strict Postgres row-level security policies for tenant-scoped tables.
+- Angular dashboard and payroll framework view for M2 operational visibility.
 
-## 7. Acceptance criteria for Milestone 1
+## 7. Out of Scope for Milestone 2
 
-1. `docker compose up --build` brings up Postgres, Redis, backend and frontend.
-2. `GET /api/v1/health` returns `200 OK` with version and environment.
-3. `GET /api/v1/health/ready` returns `200 OK` after Postgres is reachable.
-4. `POST /api/v1/employees` persists a row with NI number and tax code validation.
-5. `alembic upgrade head` creates `users`, `employees`, `audit_logs` tables.
-6. Backend test suite passes (`pytest`).
-7. Frontend dashboard renders and reads from the backend.
-8. CI pipelines (backend + frontend) pass on push.
-9. All documents in `docs/` are present and reviewed.
+- PAYE and National Insurance calculation engine, which starts in M3-M5.
+- HMRC RTI submissions, which land in M6-M7.
+- Statutory payment engines, which land in M8.
+- Pension auto-enrolment integrations, which land in M9.
+- Payslip rendering, reporting dashboards and audit UI, which land in M10.
+- Enterprise SSO/MFA, which land in M9.
+
+## 8. Acceptance Criteria for Milestone 2
+
+1. `alembic upgrade head` creates M2 tables and applies tenant-scoped employee changes.
+2. `GET /api/v1/meta/milestone` reports milestone `2` with status `complete`.
+3. `GET /api/v1/tenants` returns the seeded default tenant.
+4. `GET /api/v1/framework` returns pay frequencies, contract types, NI categories, roles and permissions.
+5. `POST /api/v1/employees` works with M1 payloads and adds tenant ID plus employee number.
+6. `POST /api/v1/employment-contracts` persists a contract for an employee.
+7. Repeating a create request with the same `Idempotency-Key` returns the original response.
+8. Protected M2 endpoints require a bearer token with the required RBAC permission.
+9. Security headers are present on API responses.
+10. Backend tests and frontend production build pass.

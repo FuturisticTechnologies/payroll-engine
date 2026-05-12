@@ -1,9 +1,9 @@
 # Documentation index
 
-The `docs/` directory contains the Milestone 1 deliverables: requirement
-finalisation, architecture design, data model, compliance posture, API
-design, and deployment plan. Every document targets a specific audience
-and can be read independently.
+The `docs/` directory contains the Milestone 1 foundation and the Milestone 2
+core payroll framework delivery: requirements, architecture, tenant-aware data
+model, compliance posture, API design, deployment plan and milestone mapping.
+Every document targets a specific audience and can be read independently.
 
 | # | Document | Audience | Purpose |
 |---|----------|----------|---------|

@@ -1,112 +1,90 @@
-# 04 — Security & UK GDPR
+# 04 - Security & UK GDPR
 
-## 1. Threat model (summary)
+## 1. Threat Model Summary
 
 | Asset | Threats | Mitigation |
 |---|---|---|
-| Employee PII (name, NI, bank) | Disclosure, exfiltration | Encryption in transit + at rest, RBAC, RLS, audit log |
-| Payroll figures | Tampering | Immutable audit trail, signed pay runs |
-| HMRC credentials | Theft | Vault/KMS, short-lived tokens, per-tenant isolation |
-| Session tokens | Hijack | HttpOnly cookies (M2), short TTL, rotation, TLS only |
-| Application containers | Compromise | Least-privilege, non-root, SBOM + image scanning |
-| Database | Unauthorised access | Private networking, IAM, strong secret rotation |
+| Employee PII | Disclosure, exfiltration | TLS, RBAC, RLS, audit trail and future field encryption |
+| Payroll figures | Tampering | Immutable audit trail and signed pay-run ledger in later milestones |
+| HMRC credentials | Theft | Vault/KMS and per-tenant isolation in M6-M7 |
+| Session tokens | Hijack | Short TTL JWTs, production CSRF guard and future HttpOnly refresh cookies |
+| Application containers | Compromise | Non-root images, pinned dependencies and CI scanning |
+| Database | Unauthorised access | Private networking, strong secrets, tenant RLS policies |
 
-## 2. Controls
+## 2. Delivered Controls
 
-### 2.1 Network and transport
+### 2.1 Network and Transport
 
-- TLS 1.2+ on all public endpoints. HTTP redirected to HTTPS at the edge.
-- HSTS (`max-age=31536000; includeSubDomains`) from M2.
-- Internal traffic between application and database inside a private VPC.
+- TLS is required for public production endpoints.
+- Production responses include HSTS: `max-age=31536000; includeSubDomains`.
+- API responses include `X-Content-Type-Options`, `X-Frame-Options`,
+  `Referrer-Policy`, `Cross-Origin-Opener-Policy` and `Permissions-Policy`.
 
-### 2.2 Authentication and authorisation
+### 2.2 Authentication and Authorisation
 
-- OAuth2 password flow for first-party login, JWT access tokens
-  (15–30 min TTL), opaque refresh tokens in HttpOnly cookies from M2.
-- SSO (OIDC) support from M9 for enterprise customers.
-- MFA for admin roles from M9.
-- RBAC with a hierarchical role model (`super_admin`, `tenant_admin`,
-  `payroll_officer`, `employer_manager`, `employee_self_service`).
-- Row-level security in Postgres: every table carries `tenant_id`, and
-  RLS policies filter by the current tenant context (M2).
+- `/api/v1/auth/login` returns JWT access and refresh tokens.
+- RBAC tables are present and enforced on tenant, employee, contract and
+  framework endpoints.
+- Development admin is seeded as tenant owner for the default tenant.
+- Bearer tokens carry tenant and permission claims; the API validates them
+  against persisted user-tenant role assignments.
 
-### 2.3 Data protection
+### 2.3 Tenant Isolation
 
-- Encryption in transit (TLS) is mandatory.
-- Encryption at rest via the disk layer for Postgres and object storage.
-- Field-level encryption for highly sensitive fields (bank account, NI
-  number storage) is under evaluation for M4 — encrypted with a per-tenant
-  data encryption key wrapped by a KMS master key.
-- Data minimisation: no PII stored that is not required to run payroll.
+- `tenants` is the employer boundary.
+- `employees`, `employment_contracts`, `user_tenant_roles` and
+  `idempotency_keys` carry tenant context.
+- Postgres RLS policies are created by migration `20260501_0002`, forced on
+  tenant tables and use request-scoped `app.tenant_id` plus `app.is_superuser`
+  database settings.
 
-### 2.4 Secrets
+### 2.4 Application-Layer Controls
 
-- No secrets in the repo. `.env.example` ships placeholder values only.
-- Production secrets come from Vault / cloud KMS, injected at runtime.
-- Rotation policy: 90-day rotation for service credentials, 12-month for
-  signing keys, immediate rotation on compromise.
+- Pydantic validates all request payloads.
+- Angular interpolation provides safe output encoding by default.
+- CSP is returned on API responses.
+- `/api/v1/auth/csrf` issues a double-submit token. Production unsafe
+  cookie-based writes require a matching `csrf_token` cookie and
+  `X-CSRF-Token` header unless the request uses bearer authentication.
+- Idempotency reserves create requests before resource writes and completes the
+  replay record in the same transaction, including concurrent retry protection.
 
-### 2.5 Application-layer controls
+### 2.5 Secrets
 
-- Input validation via Pydantic at every edge.
-- Output encoding / templating safe by default (Angular interpolation).
-- CSRF protection for cookie-based sessions (M2).
-- Strict `Content-Security-Policy` header (M2).
-- Rate limiting per route, per actor (via Redis).
-- Dependency pinning + weekly SCA (pip-audit, npm audit) in CI.
-- Static analysis: ruff + mypy (backend), ESLint (frontend), SAST (M2).
+- No secrets should be committed.
+- `.env.example` and `backend/.env.example` contain placeholder or development
+  values only.
+- Production secrets should come from a vault or cloud secret manager.
 
-### 2.6 Auditability
+## 3. UK GDPR Posture
 
-- Every data-mutating action is emitted as an append-only audit record.
-- Audit records carry: actor, source IP, event type, entity type/id,
-  JSON payload, timestamp. See [`03-data-model.md`](./03-data-model.md).
-- 7-year retention to support HMRC investigations.
+PayrollFuturistic processes personal data on behalf of employers. Employers
+are controllers; Snovasys acts as processor under UK GDPR.
 
-## 3. UK GDPR posture
-
-PayrollFuturistic processes personal data on behalf of employers
-(data controllers). Snovasys acts as a **processor** under UK GDPR.
-
-### 3.1 Lawful basis
-
-- Processing is performed under the **contractual necessity** basis
-  between the employer and Snovasys (Article 6(1)(b) UK GDPR).
-- Special category data is not stored beyond what HMRC requires.
-
-### 3.2 Data subject rights
-
-| Right | Implementation (target milestone) |
+| Right | Implementation target |
 |---|---|
-| Right of access | Self-service export in employee portal (M10) |
-| Right to rectification | Employee profile edit (M2) + audit trail |
-| Right to erasure | Controller-initiated, subject to HMRC retention (M12) |
-| Right to data portability | JSON + CSV export (M10) |
-| Right to object | Not generally applicable to statutory payroll processing |
+| Right of access | Employee self-service export in M10 |
+| Right to rectification | Employee profile edit plus audit trail |
+| Right to erasure | Controller-led workflow subject to HMRC retention |
+| Right to data portability | JSON/CSV export in M10 |
+| Right to object | Usually not applicable to statutory payroll processing |
 
-### 3.3 Retention
+Retention:
 
-- Payroll records: 6 years after the end of the tax year (HMRC).
+- Payroll records: 6 years after the end of the tax year.
 - Audit records: 7 years.
 - Authentication logs: 12 months hot, 36 months cold.
 
-### 3.4 Data residency
+Data residency target: UK region or equivalent customer-approved hosting.
 
-- UK (eu-west-2 or equivalent). No cross-border transfer without SCCs.
-
-### 3.5 Sub-processors
-
-- The list of sub-processors (cloud provider, email provider, error
-  reporting) is maintained in the customer trust centre from M11.
-
-## 4. Security milestones
+## 4. Security Milestones
 
 | Milestone | Security deliverable |
 |---|---|
-| M1 (this) | Baseline controls document; containerised runtime; dependency pinning; non-root images; structured logs |
-| M2 | RBAC tables, RLS enabled, CSRF, CSP, HSTS, audit log writes |
-| M3–M5 | SAST gates in CI, secrets scanning, image scanning |
-| M6–M7 | HMRC OAuth credentials in Vault; encrypted RTI envelopes |
-| M9 | SSO (OIDC) + MFA for privileged roles |
-| M11 | Penetration test + remediation |
-| M12 | Threat model review; DR exercise |
+| M1 | Baseline controls, container runtime, dependency pinning and structured logs |
+| M2 | RBAC tables, RLS policies, CSP, HSTS, CSRF guard and idempotency |
+| M3-M5 | SAST gates, secrets scanning and image scanning |
+| M6-M7 | HMRC OAuth credentials in Vault and encrypted RTI envelopes |
+| M9 | SSO/OIDC and MFA for privileged roles |
+| M11 | Penetration test and remediation |
+| M12 | Threat model review and disaster recovery exercise |
