@@ -7,6 +7,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
+from app.core.payroll_framework import NI_CATEGORY_CODES
+
 # Format: 2 letters, 6 digits, 1 letter — e.g. AB123456C.
 # Real HMRC rules exclude certain prefixes; enforced at service layer later.
 _NI_RE = re.compile(r"^[A-CEGHJ-PR-TW-Z]{2}\d{6}[A-D]$")
@@ -20,12 +22,16 @@ _TAX_CODE_RE = re.compile(
 
 
 class EmployeeBase(BaseModel):
+    tenant_id: UUID | None = None
+    employee_number: str | None = Field(default=None, max_length=40)
     first_name: str = Field(min_length=1, max_length=100)
     last_name: str = Field(min_length=1, max_length=100)
     email: EmailStr
     national_insurance_number: str = Field(min_length=9, max_length=9)
     tax_code: str = Field(default="1257L", min_length=2, max_length=10)
+    ni_category: str = Field(default="A", min_length=1, max_length=1)
     employment_start_date: date
+    employment_status: str = Field(default="active", max_length=20)
     job_title: str | None = Field(default=None, max_length=150)
 
     @field_validator("national_insurance_number", mode="before")
@@ -48,6 +54,16 @@ class EmployeeBase(BaseModel):
             raise ValueError("Invalid UK tax code")
         return cleaned
 
+    @field_validator("ni_category", mode="before")
+    @classmethod
+    def _normalize_ni_category(cls, v: str) -> str:
+        if not isinstance(v, str):
+            raise TypeError("NI category must be a string")
+        cleaned = v.strip().upper()
+        if cleaned not in NI_CATEGORY_CODES:
+            raise ValueError("Unsupported NI category")
+        return cleaned
+
 
 class EmployeeCreate(EmployeeBase):
     pass
@@ -57,5 +73,7 @@ class EmployeeRead(EmployeeBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
+    tenant_id: UUID
+    employee_number: str
     created_at: datetime
     updated_at: datetime
