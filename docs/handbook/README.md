@@ -12,6 +12,7 @@ changes.
 | Document | Owner | Added |
 |---|---|---|
 | [Developer workflow](./developer-workflow.md) | DevOps | M1 |
+| [Data dictionary](./data-dictionary.md) | Data Analyst | M2 |
 
 Add a row when you add a document. If a handbook page and a numbered
 deliverable disagree, the deliverable is the contract and the handbook is
