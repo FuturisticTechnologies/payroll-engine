@@ -3,12 +3,16 @@ import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
 
 import { apiBaseUrlInterceptor } from './core/interceptors/api-base-url.interceptor';
+import { authTokenInterceptor } from './core/interceptors/auth-token.interceptor';
 import { appRoutes } from './app.routes';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(appRoutes, withComponentInputBinding()),
-    provideHttpClient(withFetch(), withInterceptors([apiBaseUrlInterceptor])),
+    provideHttpClient(
+      withFetch(),
+      withInterceptors([apiBaseUrlInterceptor, authTokenInterceptor]),
+    ),
   ],
 };

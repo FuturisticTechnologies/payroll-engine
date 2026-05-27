@@ -19,23 +19,71 @@ export interface MilestoneInfo {
 
 export interface Employee {
   id: string;
+  tenant_id: string;
+  employee_number: string;
   first_name: string;
   last_name: string;
   email: string;
   national_insurance_number: string;
   tax_code: string;
+  ni_category: string;
   employment_start_date: string;
+  employment_status: string;
   job_title: string | null;
   created_at: string;
   updated_at: string;
 }
 
+export interface Tenant {
+  id: string;
+  name: string;
+  legal_name: string;
+  slug: string;
+  company_registration_number: string | null;
+  paye_reference: string | null;
+  accounts_office_reference: string | null;
+  default_pay_frequency: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PayFrequency {
+  code: string;
+  label: string;
+  periods_per_tax_year: number;
+  hmrc_payment_frequency: string;
+}
+
+export interface CatalogItem {
+  code: string;
+  label: string;
+}
+
+export interface RoleCatalogItem {
+  code: string;
+  name: string;
+  description: string;
+}
+
+export interface PermissionCatalogItem {
+  code: string;
+  description: string;
+}
+
+export interface PayrollFramework {
+  pay_frequencies: PayFrequency[];
+  contract_types: CatalogItem[];
+  ni_categories: CatalogItem[];
+  roles: RoleCatalogItem[];
+  permissions: PermissionCatalogItem[];
+}
+
 /**
  * Thin wrapper around HttpClient for the backend API.
  *
- * Milestone 1 provides the smoke-testable calls (health, milestone info,
- * employee list). Real feature modules will own their own state via signals
- * or stores in later milestones.
+ * Feature modules keep state locally for now; the service gives the Angular
+ * shell a typed contract over the FastAPI BFF surface.
  */
 @Injectable({ providedIn: 'root' })
 export class ApiService {
@@ -52,5 +100,13 @@ export class ApiService {
 
   listEmployees(): Observable<Employee[]> {
     return this.http.get<Employee[]>(`${this.base}/employees`);
+  }
+
+  listTenants(): Observable<Tenant[]> {
+    return this.http.get<Tenant[]>(`${this.base}/tenants`);
+  }
+
+  framework(): Observable<PayrollFramework> {
+    return this.http.get<PayrollFramework>(`${this.base}/framework`);
   }
 }
