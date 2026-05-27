@@ -1,7 +1,7 @@
-import { ChangeDetectionStrategy, Component, OnInit, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 
-import { ApiService, MilestoneInfo } from '../../core/services/api.service';
+import { ApiService, MilestoneInfo, PayrollFramework, Tenant } from '../../core/services/api.service';
 
 @Component({
   selector: 'pf-dashboard',
@@ -12,9 +12,9 @@ import { ApiService, MilestoneInfo } from '../../core/services/api.service';
     <section class="pf-page">
       <header class="pf-page__header">
         <div>
-          <h1>Welcome</h1>
+          <h1>Payroll control room</h1>
           <p class="pf-muted">
-            UK-compliant payroll platform — operational view.
+            UK-compliant payroll platform with Milestone 2 foundations enabled.
           </p>
         </div>
       </header>
@@ -23,33 +23,43 @@ import { ApiService, MilestoneInfo } from '../../core/services/api.service';
         <article class="pf-card pf-card--accent">
           <h3>Current milestone</h3>
           @if (milestone(); as m) {
-            <p class="pf-card__headline">#{{ m.milestone }} — {{ m.title }}</p>
-            <p class="pf-muted">{{ m.period }} · {{ m.status }}</p>
+            <p class="pf-card__headline">#{{ m.milestone }} - {{ m.title }}</p>
+            <p class="pf-muted">{{ m.period }} - {{ m.status }}</p>
           } @else if (error()) {
             <p class="pf-error">Could not reach backend: {{ error() }}</p>
           } @else {
-            <p class="pf-muted">Loading…</p>
+            <p class="pf-muted">Loading...</p>
           }
         </article>
 
         <article class="pf-card">
-          <h3>Employees</h3>
-          <p class="pf-card__headline">Core record</p>
-          <p class="pf-muted">
-            NI number, tax code, start date. Pay-bearing fields arrive in M2–M3.
-          </p>
+          <h3>Tenants</h3>
+          <p class="pf-card__headline">{{ tenants().length }}</p>
+          <p class="pf-muted">Employer isolation, PAYE references and default pay frequency.</p>
         </article>
 
         <article class="pf-card">
-          <h3>HMRC readiness</h3>
-          <p class="pf-card__headline">RTI scaffolded</p>
-          <p class="pf-muted">FPS / EPS endpoints, P60 &amp; P45 pipelines land in M6–M7.</p>
+          <h3>RBAC</h3>
+          <p class="pf-card__headline">{{ framework()?.roles?.length ?? 0 }} roles</p>
+          <p class="pf-muted">Tenant owner, payroll admin, viewer and self-service profiles.</p>
         </article>
 
         <article class="pf-card">
-          <h3>Compliance</h3>
-          <p class="pf-card__headline">UK GDPR baseline</p>
-          <p class="pf-muted">Encryption, audit log, RBAC — see docs/.</p>
+          <h3>Payroll framework</h3>
+          <p class="pf-card__headline">{{ framework()?.pay_frequencies?.length ?? 0 }} frequencies</p>
+          <p class="pf-muted">Weekly, fortnightly, four-weekly and monthly HMRC-ready setup.</p>
+        </article>
+
+        <article class="pf-card">
+          <h3>Security hardening</h3>
+          <p class="pf-card__headline">Headers + CSRF</p>
+          <p class="pf-muted">CSP, HSTS, frame protection, content sniffing guard and CSRF gate.</p>
+        </article>
+
+        <article class="pf-card">
+          <h3>Idempotency</h3>
+          <p class="pf-card__headline">Create-safe API</p>
+          <p class="pf-muted">Tenant, employee and contract creation support Idempotency-Key.</p>
         </article>
       </div>
     </section>
@@ -115,12 +125,24 @@ export class DashboardComponent implements OnInit {
   private readonly api = inject(ApiService);
 
   readonly milestone = signal<MilestoneInfo | null>(null);
+  readonly tenants = signal<Tenant[]>([]);
+  readonly framework = signal<PayrollFramework | null>(null);
   readonly error = signal<string | null>(null);
 
   ngOnInit(): void {
     this.api.milestone().subscribe({
       next: (m) => this.milestone.set(m),
-      error: (err) => this.error.set(err?.message ?? 'Unknown error'),
+      error: (err) => this.error.set(err?.message ?? 'Unknown milestone error'),
+    });
+
+    this.api.listTenants().subscribe({
+      next: (tenants) => this.tenants.set(tenants),
+      error: (err) => this.error.set(err?.message ?? 'Unknown tenant error'),
+    });
+
+    this.api.framework().subscribe({
+      next: (framework) => this.framework.set(framework),
+      error: (err) => this.error.set(err?.message ?? 'Unknown framework error'),
     });
   }
 }

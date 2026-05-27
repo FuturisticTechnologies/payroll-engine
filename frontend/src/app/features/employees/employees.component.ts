@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component, OnInit, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 
 import { ApiService, Employee } from '../../core/services/api.service';
 
@@ -13,12 +13,12 @@ import { ApiService, Employee } from '../../core/services/api.service';
       <header>
         <h1>Employees</h1>
         <p class="pf-muted">
-          Milestone 1 core record — identity, NI number, tax code, start date.
+          Milestone 2 employee structure with tenant scope, employee number and NI category.
         </p>
       </header>
 
       @if (loading()) {
-        <p class="pf-muted">Loading…</p>
+        <p class="pf-muted">Loading...</p>
       } @else if (error()) {
         <p class="pf-error">Could not load employees: {{ error() }}</p>
       } @else if (employees().length === 0) {
@@ -30,37 +30,43 @@ import { ApiService, Employee } from '../../core/services/api.service';
           </p>
         </div>
       } @else {
-        <table class="pf-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Email</th>
-              <th>NI number</th>
-              <th>Tax code</th>
-              <th>Start date</th>
-              <th>Role</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (e of employees(); track e.id) {
+        <div class="pf-table-wrap">
+          <table class="pf-table">
+            <thead>
               <tr>
-                <td>{{ e.first_name }} {{ e.last_name }}</td>
-                <td>{{ e.email }}</td>
-                <td><code>{{ e.national_insurance_number }}</code></td>
-                <td><code>{{ e.tax_code }}</code></td>
-                <td>{{ e.employment_start_date }}</td>
-                <td>{{ e.job_title ?? '—' }}</td>
+                <th>Employee</th>
+                <th>Email</th>
+                <th>Employee no.</th>
+                <th>NI</th>
+                <th>Tax</th>
+                <th>Status</th>
+                <th>Start date</th>
+                <th>Role</th>
               </tr>
-            }
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              @for (e of employees(); track e.id) {
+                <tr>
+                  <td>{{ e.first_name }} {{ e.last_name }}</td>
+                  <td>{{ e.email }}</td>
+                  <td><code>{{ e.employee_number }}</code></td>
+                  <td><code>{{ e.national_insurance_number }} / {{ e.ni_category }}</code></td>
+                  <td><code>{{ e.tax_code }}</code></td>
+                  <td>{{ e.employment_status }}</td>
+                  <td>{{ e.employment_start_date }}</td>
+                  <td>{{ e.job_title ?? '-' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
       }
     </section>
   `,
   styles: [
     `
       .pf-page {
-        max-width: 1100px;
+        max-width: 1180px;
       }
 
       h1 {
@@ -84,14 +90,18 @@ import { ApiService, Employee } from '../../core/services/api.service';
         border-radius: var(--pf-radius);
       }
 
-      .pf-table {
+      .pf-table-wrap {
         margin-top: 24px;
-        width: 100%;
-        border-collapse: collapse;
+        overflow-x: auto;
         background: var(--pf-color-surface);
         box-shadow: var(--pf-shadow);
         border-radius: var(--pf-radius);
-        overflow: hidden;
+      }
+
+      .pf-table {
+        min-width: 920px;
+        width: 100%;
+        border-collapse: collapse;
 
         th,
         td {
@@ -99,6 +109,7 @@ import { ApiService, Employee } from '../../core/services/api.service';
           text-align: left;
           border-bottom: 1px solid var(--pf-color-border);
           font-size: 14px;
+          white-space: nowrap;
         }
 
         th {
