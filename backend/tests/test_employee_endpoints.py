@@ -1,4 +1,4 @@
-"""Database-backed smoke tests for the Milestone 1 employee API."""
+"""Database-backed smoke tests for the employee API."""
 from __future__ import annotations
 
 from datetime import date
@@ -33,7 +33,7 @@ def _employees_table_available() -> bool:
 
 pytestmark = pytest.mark.skipif(
     not _employees_table_available(),
-    reason="M1 employees table is not available",
+    reason="employees table is not available",
 )
 
 
@@ -57,10 +57,18 @@ def test_ready_probe_reaches_database(client: TestClient) -> None:
     assert response.json() == {"status": "ready", "database": "ok"}
 
 
-def test_create_employee_persists_validated_record(client: TestClient) -> None:
+def test_create_employee_requires_authentication(client: TestClient) -> None:
+    response = client.post("/api/v1/employees", json=_employee_payload())
+    assert response.status_code == 401
+
+
+def test_create_employee_persists_validated_record(
+    client: TestClient,
+    auth_headers: dict[str, str],
+) -> None:
     payload = _employee_payload()
 
-    created = client.post("/api/v1/employees", json=payload)
+    created = client.post("/api/v1/employees", json=payload, headers=auth_headers)
     assert created.status_code == 201
     created_body = created.json()
     assert (
@@ -68,7 +76,11 @@ def test_create_employee_persists_validated_record(client: TestClient) -> None:
         == payload["national_insurance_number"]
     )
     assert created_body["tax_code"] == "K497"
+    assert created_body["employee_number"].startswith("EMP-")
+    assert created_body["tenant_id"]
+    assert created_body["ni_category"] == "A"
+    assert created_body["employment_status"] == "active"
 
-    fetched = client.get(f"/api/v1/employees/{created_body['id']}")
+    fetched = client.get(f"/api/v1/employees/{created_body['id']}", headers=auth_headers)
     assert fetched.status_code == 200
     assert fetched.json()["email"] == payload["email"]

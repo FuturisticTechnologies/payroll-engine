@@ -26,6 +26,7 @@ def test_employee_create_happy_path() -> None:
     emp = EmployeeCreate(**_payload())
     assert emp.national_insurance_number == "AB123456C"
     assert emp.tax_code == "1257L"
+    assert emp.ni_category == "A"
 
 
 def test_ni_number_is_uppercased_and_stripped() -> None:
@@ -61,3 +62,8 @@ def test_tax_code_garbage_rejected() -> None:
 def test_email_must_be_valid() -> None:
     with pytest.raises(ValidationError):
         EmployeeCreate(**_payload(email="not-an-email"))
+
+
+def test_ni_category_rejected_when_unknown() -> None:
+    with pytest.raises(ValidationError):
+        EmployeeCreate(**_payload(ni_category="Q"))
