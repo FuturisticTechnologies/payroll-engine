@@ -36,8 +36,16 @@ def test_meta_version(client: TestClient) -> None:
 def test_meta_milestone(client: TestClient) -> None:
     response = client.get("/api/v1/meta/milestone")
     assert response.status_code == 200
-    assert response.json()["milestone"] == "1"
+    assert response.json()["milestone"] == "2"
     assert response.json()["status"] == "complete"
+
+
+def test_security_headers_are_present(client: TestClient) -> None:
+    response = client.get("/api/v1/health")
+    assert response.status_code == 200
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
+    assert response.headers["X-Frame-Options"] == "DENY"
+    assert "frame-ancestors 'none'" in response.headers["Content-Security-Policy"]
 
 
 def test_openapi_schema(client: TestClient) -> None:
