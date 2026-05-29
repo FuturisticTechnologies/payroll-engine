@@ -12,7 +12,7 @@ from uuid import uuid4
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.requests import Request
-from starlette.responses import Response
+from starlette.responses import JSONResponse, Response
 from structlog.contextvars import bind_contextvars, clear_contextvars
 
 from app import __version__
@@ -24,6 +24,43 @@ from app.core.logging import configure_logging, get_logger
 settings = get_settings()
 configure_logging(settings.app_env, settings.app_debug)
 log = get_logger(__name__)
+
+_UNSAFE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+_CSRF_EXEMPT_PATHS = {"/api/v1/auth/csrf", "/api/v1/auth/login"}
+
+
+def _apply_security_headers(response: Response) -> None:
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault("Cross-Origin-Opener-Policy", "same-origin")
+    response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+    response.headers.setdefault(
+        "Content-Security-Policy",
+        "default-src 'self'; "
+        "img-src 'self' data:; "
+        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        "connect-src 'self' http://localhost:4200 http://127.0.0.1:4200; "
+        "frame-ancestors 'none'; "
+        "base-uri 'self'; "
+        "form-action 'self'",
+    )
+    if settings.app_env == "production":
+        response.headers.setdefault(
+            "Strict-Transport-Security",
+            "max-age=31536000; includeSubDomains",
+        )
+
+
+def _csrf_failed_response(request_id: str) -> JSONResponse:
+    response = JSONResponse(
+        status_code=403,
+        content={"detail": "CSRF token missing or invalid"},
+    )
+    response.headers["X-Request-ID"] = request_id
+    _apply_security_headers(response)
+    return response
 
 
 @asynccontextmanager
@@ -73,6 +110,20 @@ async def request_context_middleware(
         path=request.url.path,
     )
 
+    authorization = request.headers.get("Authorization", "")
+    bearer_request = authorization.lower().startswith("bearer ")
+    csrf_cookie = request.cookies.get("csrf_token")
+    csrf_header = request.headers.get("X-CSRF-Token")
+    if (
+        settings.app_env == "production"
+        and request.method in _UNSAFE_METHODS
+        and request.url.path not in _CSRF_EXEMPT_PATHS
+        and not bearer_request
+        and (not csrf_cookie or csrf_cookie != csrf_header)
+    ):
+        clear_contextvars()
+        return _csrf_failed_response(request_id)
+
     started_at = perf_counter()
     try:
         response = await call_next(request)
@@ -85,6 +136,7 @@ async def request_context_middleware(
         raise
 
     response.headers["X-Request-ID"] = request_id
+    _apply_security_headers(response)
     log.info(
         "request.completed",
         status_code=response.status_code,

@@ -1,140 +1,123 @@
-# 02 — Architecture
+# 02 - Architecture
 
-## 1. Guiding principles
+## 1. Guiding Principles
 
-1. **API-first.** Every capability is exposed as a versioned REST resource.
-   The SPA is one client, the HMRC integration is another, partners are a
-   third.
-2. **Strict types end-to-end.** Pydantic on the edge, SQLAlchemy for
-   persistence, TypeScript on the UI. Money is `Decimal`, never float.
-3. **Async by default.** Async FastAPI + asyncpg. Background work is offloaded
-   to Redis-backed workers (arq/Celery) from Milestone 2 onward.
-4. **Immutable audit.** Every state change is accompanied by an append-only
-   audit event. Audit rows are never updated or deleted.
-5. **Stateless compute, stateful storage.** Application containers are
-   horizontally scalable. All durable state lives in Postgres or object storage.
-6. **Twelve-factor configuration.** All environment-specific values come
-   from env vars, validated on boot.
-7. **Compliance by construction.** PII is minimised, encrypted in transit and
-   at rest, and protected by RBAC + row-level security (Milestone 2).
+1. API-first. Every capability is exposed as a versioned REST resource.
+2. Strict types end to end. Pydantic validates the edge, SQLAlchemy maps
+   persistence and TypeScript types the UI.
+3. Async by default. FastAPI uses async SQLAlchemy sessions for runtime I/O.
+4. Immutable audit posture. Data mutations are designed to emit append-only
+   audit events as the domain layer matures.
+5. Stateless compute, stateful storage. Durable state lives in Postgres and
+   future object storage.
+6. Twelve-factor configuration. Environment-specific values come from env vars.
+7. Compliance by construction. PII is minimised and tenant-scoped.
 
-## 2. High-level view
+## 2. High-Level View
 
-```
-                ┌──────────────────────────────┐
-                │         Browser (SPA)        │
-                │   Angular 18 · TypeScript    │
-                └──────────────┬───────────────┘
-                               │ HTTPS / JSON
-                               ▼
-┌────────────────────────────────────────────────────────────┐
-│                      API Gateway / WAF                     │
-│                (TLS termination, rate limit)               │
-└──────────────────────────┬─────────────────────────────────┘
-                           │
-                           ▼
-             ┌──────────────────────────┐
-             │   FastAPI App (uvicorn)  │
-             │  • routing / validation  │
-             │  • auth / RBAC           │
-             │  • domain services       │
-             │  • HMRC client           │
-             └────┬────────────┬────────┘
-                  │            │
-          async / │            │ outbound
-          queries │            │ HTTPS
-                  ▼            ▼
-        ┌──────────────┐  ┌──────────────┐
-        │  PostgreSQL  │  │  HMRC APIs   │
-        │  (primary)   │  │ (test/prod)  │
-        └──────┬───────┘  └──────────────┘
-               │
-               │  logical replication (M7+)
-               ▼
-        ┌──────────────┐    ┌──────────────┐
-        │  Read replica│    │    Redis     │
-        │  (reporting) │    │ (cache/jobs) │
-        └──────────────┘    └──────────────┘
+```text
+Browser / Angular SPA
+        |
+        | HTTPS / JSON
+        v
+FastAPI API
+        |-- routing and validation
+        |-- auth and RBAC schema
+        |-- tenant-aware payroll framework
+        |-- security headers and request IDs
+        |
+        v
+PostgreSQL 16
+        |-- tenants
+        |-- employees
+        |-- employment contracts
+        |-- RBAC tables
+        |-- audit logs
+        |-- row-level security policies
+
+Redis 7 is included in the local stack for sessions, rate limiting and future
+background jobs.
 ```
 
 ## 3. Components
 
-### 3.1 Frontend — Angular 18 (standalone)
+### 3.1 Frontend - Angular 21
 
-- Standalone components, signals for local state.
-- Router-level lazy loading (one chunk per feature module).
-- `HttpClient` with a global `apiBaseUrlInterceptor`.
-- `OnPush` change detection everywhere.
-- Karma + Jasmine for unit tests. Playwright adopted in Milestone 11.
+- Standalone components and router-level lazy loading.
+- Signals for local component state.
+- `HttpClient` wrapper in `ApiService`.
+- `OnPush` change detection.
+- Current pages: dashboard, employees, payroll framework and system health.
 
-### 3.2 Backend — Python 3.12 + FastAPI
+### 3.2 Backend - FastAPI
 
-- ASGI via uvicorn (dev) and gunicorn + uvicorn workers (prod).
-- `app/api/v1/` owns HTTP concerns.
-- `app/services/` owns domain orchestration (added in M2).
-- `app/models/` owns persistence.
-- `app/schemas/` owns request/response validation.
-- `app/core/` owns cross-cutting infra (config, logging, security, DB).
+- `app/api/v1/` owns HTTP endpoint routing.
+- `app/models/` owns persistence models.
+- `app/schemas/` owns request and response validation.
+- `app/core/` owns configuration, database, security, tenancy and idempotency helpers.
+- OpenAPI docs are generated at `/docs`, `/redoc` and `/openapi.json`.
 
-### 3.3 Database — PostgreSQL 16
+### 3.3 Database - PostgreSQL 16
 
-- Primary storage for all payroll data.
-- Schemas: `payroll` (domain), `audit` (append-only), `reference` (tax tables).
-- Numeric money: `NUMERIC(14, 2)` for amounts, `NUMERIC(6, 4)` for rates.
-- Row-level security enabled per tenant in Milestone 2.
-- Alembic for versioned schema migrations.
+- Alembic manages versioned migrations.
+- `20260410_0001` creates users, employees and audit logs.
+- `20260501_0002` creates tenants, RBAC, employment contracts, idempotency keys
+  and tenant row-level security policies.
+- Monetary values use fixed-precision `NUMERIC`, never floats.
 
-### 3.4 Cache & queue — Redis 7
+### 3.4 Cache and Queue - Redis 7
 
-- Session store, rate-limit counters, idempotency keys.
-- Background job broker (arq) for pay run calculation, HMRC submissions,
-  payslip rendering — introduced from Milestone 3.
+Redis is part of the runtime topology. M2 does not yet enforce Redis-backed
+rate limiting; it remains the planned primitive for sessions, throttling and
+background payroll jobs.
 
-### 3.5 HMRC integration layer
+### 3.5 HMRC Integration Layer
 
-- Dedicated `app/integrations/hmrc/` package (from Milestone 6).
-- OAuth2 client credentials + per-employer delegated tokens.
-- Strict request/response schemas; every interaction is audit-logged.
-- Exponential backoff and circuit breaker on transport errors.
+HMRC integration begins in M6. The current architecture reserves the API and
+data boundaries needed for per-tenant HMRC credentials, RTI submissions and
+auditable request/response records.
 
-## 4. Request lifecycle (M1)
+## 4. Request Lifecycle
 
-1. Browser sends `GET /api/v1/employees` to the backend.
-2. FastAPI middleware applies CORS, structured logging context, request ID.
-3. Router resolves the endpoint in `employees.py`.
-4. `get_db()` dependency yields an `AsyncSession` from the pool.
-5. Handler runs a SQLAlchemy statement against Postgres.
-6. Rows are mapped via `EmployeeRead.model_validate(...)` for a typed response.
-7. Response is serialised; audit log entry is queued (Milestone 2+).
+1. Browser calls a versioned endpoint such as `GET /api/v1/framework`.
+2. FastAPI middleware binds a request ID and applies security headers.
+3. The router resolves the endpoint in `app/api/v1/endpoints/`.
+4. `get_db()` yields an async SQLAlchemy session.
+5. The endpoint validates input, resolves tenant context when required and
+   performs ORM reads/writes.
+6. Create endpoints reserve an idempotency row before the resource write and
+   complete it in the same transaction.
+7. Pydantic response models serialise the result.
 
-## 5. Deployment topology (target)
+## 5. Deployment Topology
 
 | Environment | Purpose | Infrastructure |
 |---|---|---|
 | Local | Developer inner loop | Docker Compose |
-| CI | PR validation | GitHub Actions + ephemeral services |
-| Dev | Integration | Kubernetes (shared) or a single VM |
-| Staging | Pre-prod, HMRC test API | Kubernetes, isolated namespace |
-| Production | Live | Kubernetes, multi-AZ, dedicated cluster |
+| CI | Pull-request validation | GitHub Actions with ephemeral services |
+| Dev | Integration | Shared container host or Kubernetes |
+| Staging | HMRC test and UAT rehearsal | Isolated production-like environment |
+| Production | Live payroll service | Multi-AZ managed infrastructure |
 
-## 6. Cross-cutting concerns
+## 6. Cross-Cutting Concerns
 
 | Concern | Mechanism |
 |---|---|
 | Config | `pydantic-settings`, env-driven, validated on boot |
-| Logging | `structlog` JSON in staging/prod, console in dev |
-| Tracing | OpenTelemetry (planned M12) |
-| Metrics | Prometheus exposition (planned M12) |
-| Error reporting | Sentry (planned M11) |
-| Secrets | Vault or cloud KMS (never in repo) |
-| Feature flags | Unleash or equivalent (planned M10) |
+| Logging | `structlog` with request ID context |
+| Security headers | FastAPI middleware |
+| Idempotency | `idempotency_keys` table |
+| Tenant isolation | `tenant_id` plus Postgres RLS |
+| Secrets | Vault or cloud KMS, never committed |
+| Metrics | Prometheus planned in M12 |
+| Tracing | OpenTelemetry planned in M12 |
 
-## 7. Technology justification
+## 7. Technology Justification
 
 | Decision | Alternatives considered | Why |
 |---|---|---|
-| FastAPI | Django REST, Flask, .NET Core | Async, typed, modern, fastest OpenAPI DX |
-| PostgreSQL | MySQL, SQL Server | Strict types, numerics, RLS, JSONB, mature Alembic story |
-| Angular | React, Vue | Opinionated, enterprise-friendly, aligned with team skills |
-| Redis | Memcached, Kafka | One tool for cache + jobs + pub/sub at our scale |
-| Docker Compose (local) | Native installs | One command, mirrors prod container model |
+| FastAPI | Django REST, Flask, .NET Core | Async, typed, strong OpenAPI experience |
+| PostgreSQL | MySQL, SQL Server | Strict types, numerics, RLS, JSONB and Alembic support |
+| Angular | React, Vue | Opinionated, enterprise-friendly and team-aligned |
+| Redis | Memcached, Kafka | One primitive for cache, sessions and jobs |
+| Docker Compose | Native installs | Repeatable local stack |
