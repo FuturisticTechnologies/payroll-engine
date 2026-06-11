@@ -7,10 +7,10 @@ payments, pension auto-enrolment and UK GDPR.
 
 ## Status
 
-**Milestone 2 - Core Data Models, Employee Structures, Payroll Framework Setup**
-(1 May 2026 - 31 May 2026)
+**Milestone 3 - Basic Payroll Engine**
+(1 Jun 2026 - 30 Jun 2026)
 
-Milestone 2 extends the Milestone 1 runnable scaffold with:
+Milestone 3 extends the tenant, employee and framework foundation with:
 
 - Employer tenants with seeded Snovasys/Futuristic default tenant.
 - Tenant-scoped employees with employee numbers, NI category and employment status.
@@ -19,10 +19,17 @@ Milestone 2 extends the Milestone 1 runnable scaffold with:
 - Employment contracts with contract type, pay frequency, salary, hours and dates.
 - Payroll framework catalog endpoint for pay frequencies, contract types, NI categories and roles.
 - Transactional idempotency support for create endpoints through `Idempotency-Key`.
+- Pay periods and calculated pay runs for weekly, fortnightly, four-weekly and
+  monthly payroll cycles.
+- Basic payroll engine for contract salary, manual earnings, manual deductions,
+  gross pay, total deductions and net pay.
+- Employee-level payroll run lines, line items and immutable hash-chain ledger
+  evidence for each calculated run.
 - Security headers for CSP, HSTS in production, frame protection, content sniffing
   protection and CSRF bootstrap/guard.
 - Alembic migration `20260501_0002` with strict Postgres row-level security
-  policies and forced tenant isolation.
+  policies and forced tenant isolation, plus migration `20260601_0003` for M3
+  payroll tables and append-only ledger protection.
 
 See [`docs/`](./docs) for requirements, architecture, data model, HMRC compliance
 notes, security/GDPR posture, API design and deployment guidance.
@@ -129,6 +136,7 @@ curl http://localhost:8000/api/v1/health
 curl http://localhost:8000/api/v1/meta/milestone
 curl http://localhost:8000/api/v1/tenants
 curl http://localhost:8000/api/v1/framework
+curl http://localhost:8000/api/v1/pay-runs
 ```
 
 Create endpoints accept idempotency:
@@ -138,6 +146,18 @@ curl -X POST http://localhost:8000/api/v1/employees \
   -H "Content-Type: application/json" \
   -H "Idempotency-Key: demo-employee-001" \
   -d "{\"first_name\":\"Jane\",\"last_name\":\"Doe\",\"email\":\"jane@example.com\",\"national_insurance_number\":\"AB123456C\",\"tax_code\":\"1257L\",\"employment_start_date\":\"2026-05-01\"}"
+```
+
+Create a basic payroll run after at least one active employee has a matching
+primary employment contract:
+
+```bash
+curl -X POST http://localhost:8000/api/v1/pay-runs \
+  -H "Authorization: Bearer <access_token>" \
+  -H "X-Tenant-ID: <tenant_id>" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: demo-pay-run-001" \
+  -d "{\"tax_year\":2026,\"period_number\":6,\"pay_frequency\":\"monthly\",\"period_start\":\"2026-06-01\",\"period_end\":\"2026-06-30\",\"payment_date\":\"2026-06-30\",\"adjustments\":[]}"
 ```
 
 ## Compliance & Security

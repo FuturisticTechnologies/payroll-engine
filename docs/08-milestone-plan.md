@@ -8,7 +8,7 @@ milestone, total GBP 273,000 plus applicable taxes. Project span:
 |---|---|---|---|---|
 | M1 | 10 - 30 Apr 2026 | Project initiation, requirements, architecture | Requirements, architecture, security/GDPR, HMRC outline, API design, deployment plan, runnable FastAPI + Angular + Postgres + Docker Compose scaffold, CI pipelines | Delivered |
 | **M2** | **May 2026** | **Core data models, employee structures, payroll framework setup** | **Tenants, RBAC tables, row-level security, tenant-scoped employees, employment contracts, pay frequencies, idempotency, CSRF/CSP/HSTS hardening** | **Delivered** |
-| M3 | Jun 2026 | Basic payroll engine | Earnings and deductions calculation, pay run aggregation, immutable ledger | Planned |
+| **M3** | **Jun 2026** | **Basic payroll engine** | **Earnings and deductions calculation, pay run aggregation, immutable ledger** | **Delivered** |
 | M4 | Jul 2026 | PAYE tax calculations, tax codes, allowances | PAYE engine, tax code state machine, cumulative/non-cumulative, K-codes | Planned |
 | M5 | Aug 2026 | National Insurance calculations and compliance rules | NI categories, Class 1 primary/secondary, director's NI, annual reference data | Planned |
 | M6 | Sep 2026 | HMRC RTI integration, FPS submissions | HMRC OAuth client, FPS envelope builder, transmission, audit trail | Planned |
