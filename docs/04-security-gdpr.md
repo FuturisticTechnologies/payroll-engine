@@ -48,6 +48,8 @@
   `X-CSRF-Token` header unless the request uses bearer authentication.
 - Idempotency reserves create requests before resource writes and completes the
   replay record in the same transaction, including concurrent retry protection.
+- M3 payroll ledger entries are append-only in the API and protected by a
+  Postgres trigger that rejects updates and deletes.
 
 ### 2.5 Secrets
 
@@ -83,7 +85,8 @@ Data residency target: UK region or equivalent customer-approved hosting.
 |---|---|
 | M1 | Baseline controls, container runtime, dependency pinning and structured logs |
 | M2 | RBAC tables, RLS policies, CSP, HSTS, CSRF guard and idempotency |
-| M3-M5 | SAST gates, secrets scanning and image scanning |
+| M3 | Payroll run ledger integrity and tenant-scoped pay-run RLS |
+| M4-M5 | SAST gates, secrets scanning and image scanning |
 | M6-M7 | HMRC OAuth credentials in Vault and encrypted RTI envelopes |
 | M9 | SSO/OIDC and MFA for privileged roles |
 | M11 | Penetration test and remediation |
