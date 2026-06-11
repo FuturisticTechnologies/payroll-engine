@@ -95,7 +95,24 @@ legislation.
 - Payslip rendering, reporting dashboards and audit UI, which land in M10.
 - Enterprise SSO/MFA, which land in M9.
 
-## 8. Acceptance Criteria for Milestone 2
+## 8. Delivered in Milestone 3
+
+- Pay period model for tenant-scoped payroll cycles.
+- Payroll run model with employee count, gross earnings, total deductions and net pay.
+- Basic calculation engine for contract salary per pay frequency.
+- Manual earning and deduction adjustments per employee per run.
+- Employee-level payroll run lines and line item evidence.
+- Append-only payroll ledger entries with hash-chain integrity fields.
+- RBAC-protected `/api/v1/pay-runs` API and Angular payroll runs view.
+
+## 9. Out of Scope for Milestone 3
+
+- PAYE tax calculations, which land in M4.
+- National Insurance calculations, which land in M5.
+- HMRC RTI submissions, which land in M6-M7.
+- Payslip PDF rendering, which lands in M10.
+
+## 10. Acceptance Criteria for Milestone 2
 
 1. `alembic upgrade head` creates M2 tables and applies tenant-scoped employee changes.
 2. `GET /api/v1/meta/milestone` reports milestone `2` with status `complete`.
@@ -107,3 +124,16 @@ legislation.
 8. Protected M2 endpoints require a bearer token with the required RBAC permission.
 9. Security headers are present on API responses.
 10. Backend tests and frontend production build pass.
+
+## 11. Acceptance Criteria for Milestone 3
+
+1. `alembic upgrade head` creates M3 payroll period, run, line item and ledger tables.
+2. `GET /api/v1/meta/milestone` reports milestone `3` with status `complete`.
+3. Protected payroll endpoints require bearer tokens with payroll permissions.
+4. `POST /api/v1/pay-runs` creates a pay period when needed and calculates eligible employees.
+5. Contract annual salary is divided by the configured pay frequency periods per tax year.
+6. Manual earnings increase gross pay and manual deductions reduce net pay.
+7. Pay run totals equal the aggregate of employee-level run lines.
+8. Each calculated run writes an immutable hash-chain ledger entry.
+9. Repeating a pay-run create request with the same `Idempotency-Key` returns the original response.
+10. Backend tests, backend lint and frontend production build pass.
