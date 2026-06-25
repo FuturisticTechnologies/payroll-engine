@@ -10,6 +10,7 @@ from app.api.v1.endpoints import (
     framework,
     health,
     meta,
+    pay_runs,
     tenants,
 )
 
@@ -24,4 +25,5 @@ api_router.include_router(
     prefix="/employment-contracts",
     tags=["employment-contracts"],
 )
+api_router.include_router(pay_runs.router, prefix="/pay-runs", tags=["pay-runs"])
 api_router.include_router(framework.router, prefix="/framework", tags=["framework"])
