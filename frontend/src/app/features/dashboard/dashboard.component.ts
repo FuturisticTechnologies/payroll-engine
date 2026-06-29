@@ -1,7 +1,13 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 
-import { ApiService, MilestoneInfo, PayrollFramework, Tenant } from '../../core/services/api.service';
+import {
+  ApiService,
+  MilestoneInfo,
+  PayRunSummary,
+  PayrollFramework,
+  Tenant,
+} from '../../core/services/api.service';
 
 @Component({
   selector: 'pf-dashboard',
@@ -14,7 +20,7 @@ import { ApiService, MilestoneInfo, PayrollFramework, Tenant } from '../../core/
         <div>
           <h1>Payroll control room</h1>
           <p class="pf-muted">
-            UK-compliant payroll platform with Milestone 2 foundations enabled.
+            UK-compliant payroll platform with Milestone 3 payroll calculations enabled.
           </p>
         </div>
       </header>
@@ -51,6 +57,12 @@ import { ApiService, MilestoneInfo, PayrollFramework, Tenant } from '../../core/
         </article>
 
         <article class="pf-card">
+          <h3>Payroll runs</h3>
+          <p class="pf-card__headline">{{ payRuns().length }} calculated</p>
+          <p class="pf-muted">Basic earnings, deductions, net pay and ledger evidence.</p>
+        </article>
+
+        <article class="pf-card">
           <h3>Security hardening</h3>
           <p class="pf-card__headline">Headers + CSRF</p>
           <p class="pf-muted">CSP, HSTS, frame protection, content sniffing guard and CSRF gate.</p>
@@ -59,7 +71,7 @@ import { ApiService, MilestoneInfo, PayrollFramework, Tenant } from '../../core/
         <article class="pf-card">
           <h3>Idempotency</h3>
           <p class="pf-card__headline">Create-safe API</p>
-          <p class="pf-muted">Tenant, employee and contract creation support Idempotency-Key.</p>
+          <p class="pf-muted">Employee, contract and payroll run creation support Idempotency-Key.</p>
         </article>
       </div>
     </section>
@@ -127,6 +139,7 @@ export class DashboardComponent implements OnInit {
   readonly milestone = signal<MilestoneInfo | null>(null);
   readonly tenants = signal<Tenant[]>([]);
   readonly framework = signal<PayrollFramework | null>(null);
+  readonly payRuns = signal<PayRunSummary[]>([]);
   readonly error = signal<string | null>(null);
 
   ngOnInit(): void {
@@ -143,6 +156,11 @@ export class DashboardComponent implements OnInit {
     this.api.framework().subscribe({
       next: (framework) => this.framework.set(framework),
       error: (err) => this.error.set(err?.message ?? 'Unknown framework error'),
+    });
+
+    this.api.listPayRuns().subscribe({
+      next: (runs) => this.payRuns.set(runs),
+      error: (err) => this.error.set(err?.message ?? 'Unknown payroll error'),
     });
   }
 }
