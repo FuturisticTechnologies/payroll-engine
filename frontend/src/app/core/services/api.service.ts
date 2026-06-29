@@ -79,6 +79,101 @@ export interface PayrollFramework {
   permissions: PermissionCatalogItem[];
 }
 
+export interface PayrollAdjustment {
+  employee_id: string;
+  item_type: 'earning' | 'deduction';
+  code: string;
+  description: string;
+  amount: string;
+  taxable?: boolean;
+  pensionable?: boolean;
+}
+
+export interface PayRunCreate {
+  tax_year: number;
+  period_number: number;
+  pay_frequency: string;
+  period_start: string;
+  period_end: string;
+  payment_date: string;
+  employee_ids?: string[];
+  adjustments?: PayrollAdjustment[];
+}
+
+export interface PayPeriod {
+  id: string;
+  tenant_id: string;
+  tax_year: number;
+  period_number: number;
+  pay_frequency: string;
+  period_start: string;
+  period_end: string;
+  payment_date: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PayrollLineItem {
+  id: string;
+  item_type: string;
+  code: string;
+  description: string;
+  amount: string;
+  taxable: boolean;
+  pensionable: boolean;
+  source: string;
+}
+
+export interface PayRunLine {
+  id: string;
+  employee_id: string;
+  contract_id: string;
+  employee_number: string;
+  employee_name: string;
+  base_salary: string;
+  additional_earnings: string;
+  gross_pay: string;
+  total_deductions: string;
+  net_pay: string;
+  currency: string;
+  items: PayrollLineItem[];
+}
+
+export interface PayrollLedgerEntry {
+  id: string;
+  pay_run_id: string;
+  sequence_number: number;
+  entry_type: string;
+  payload_hash: string;
+  previous_hash: string | null;
+  entry_hash: string;
+  created_at: string;
+}
+
+export interface PayRunSummary {
+  id: string;
+  tenant_id: string;
+  pay_period_id: string;
+  status: string;
+  employee_count: number;
+  gross_earnings: string;
+  total_deductions: string;
+  net_pay: string;
+  currency: string;
+  calculation_version: string;
+  calculated_at: string;
+  ledger_entry_hash: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PayRun extends PayRunSummary {
+  pay_period: PayPeriod;
+  lines: PayRunLine[];
+  ledger_entries: PayrollLedgerEntry[];
+}
+
 /**
  * Thin wrapper around HttpClient for the backend API.
  *
@@ -108,5 +203,19 @@ export class ApiService {
 
   framework(): Observable<PayrollFramework> {
     return this.http.get<PayrollFramework>(`${this.base}/framework`);
+  }
+
+  listPayRuns(): Observable<PayRunSummary[]> {
+    return this.http.get<PayRunSummary[]>(`${this.base}/pay-runs`);
+  }
+
+  getPayRun(id: string): Observable<PayRun> {
+    return this.http.get<PayRun>(`${this.base}/pay-runs/${id}`);
+  }
+
+  createPayRun(payload: PayRunCreate, idempotencyKey: string): Observable<PayRun> {
+    return this.http.post<PayRun>(`${this.base}/pay-runs`, payload, {
+      headers: { 'Idempotency-Key': idempotencyKey },
+    });
   }
 }
