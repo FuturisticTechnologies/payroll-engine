@@ -36,7 +36,7 @@ def test_meta_version(client: TestClient) -> None:
 def test_meta_milestone(client: TestClient) -> None:
     response = client.get("/api/v1/meta/milestone")
     assert response.status_code == 200
-    assert response.json()["milestone"] == "2"
+    assert response.json()["milestone"] == "3"
     assert response.json()["status"] == "complete"
 
 
