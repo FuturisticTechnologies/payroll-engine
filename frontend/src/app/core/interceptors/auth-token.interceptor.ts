@@ -5,7 +5,13 @@ import { catchError, throwError } from 'rxjs';
 
 import { AuthService } from '../services/auth.service';
 
-const PROTECTED_API_PATHS = ['/tenants', '/employees', '/employment-contracts', '/framework'];
+const PROTECTED_API_PATHS = [
+  '/tenants',
+  '/employees',
+  '/employment-contracts',
+  '/pay-runs',
+  '/framework',
+];
 
 export const authTokenInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
