@@ -17,8 +17,8 @@ async def version() -> dict[str, str]:
 async def milestone() -> dict[str, str]:
     """Reflects the SOW milestone this build corresponds to."""
     return {
-        "milestone": "2",
-        "title": "Core Data Models, Employee Structures, Payroll Framework Setup",
-        "period": "2026-05-01 / 2026-05-31",
+        "milestone": "3",
+        "title": "Basic Payroll Engine",
+        "period": "2026-06-01 / 2026-06-30",
         "status": "complete",
     }

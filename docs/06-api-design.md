@@ -38,6 +38,10 @@ Collections are lowercase plural nouns. Filters live in query string.
 | `GET` | `/api/v1/employment-contracts` | List employment contracts |
 | `POST` | `/api/v1/employment-contracts` | Create employment contract |
 | `GET` | `/api/v1/employment-contracts/{contract_id}` | Fetch one contract |
+| `GET` | `/api/v1/pay-runs` | List payroll run summaries |
+| `POST` | `/api/v1/pay-runs` | Calculate and persist a payroll run |
+| `GET` | `/api/v1/pay-runs/{pay_run_id}` | Fetch one payroll run with lines and ledger |
+| `GET` | `/api/v1/pay-runs/{pay_run_id}/ledger` | Fetch immutable ledger entries for a run |
 | `GET` | `/api/v1/framework` | Pay frequencies, contract types, NI categories, roles and permissions |
 
 Interactive documentation is available at `/docs` and `/redoc`.
@@ -45,8 +49,8 @@ Interactive documentation is available at `/docs` and `/redoc`.
 ## 4. Authentication
 
 Milestone 2 retains `/auth/login` for first-party login and returns access and
-refresh JWTs. Tenant, employee, contract and framework endpoints require bearer
-tokens and persisted RBAC permissions.
+refresh JWTs. Tenant, employee, contract, pay-run and framework endpoints require
+bearer tokens and persisted RBAC permissions.
 
 ```http
 Authorization: Bearer <access_token>
@@ -103,6 +107,38 @@ development tenant and generates an employee number.
   "effective_from": "2026-05-01",
   "currency": "GBP",
   "is_primary": true
+}
+```
+
+### Create Pay Run
+
+```json
+{
+  "tax_year": 2026,
+  "period_number": 6,
+  "pay_frequency": "monthly",
+  "period_start": "2026-06-01",
+  "period_end": "2026-06-30",
+  "payment_date": "2026-06-30",
+  "employee_ids": ["00000000-0000-4000-8000-000000000999"],
+  "adjustments": [
+    {
+      "employee_id": "00000000-0000-4000-8000-000000000999",
+      "item_type": "earning",
+      "code": "BONUS",
+      "description": "Monthly bonus",
+      "amount": "250.00"
+    },
+    {
+      "employee_id": "00000000-0000-4000-8000-000000000999",
+      "item_type": "deduction",
+      "code": "ADVANCE",
+      "description": "Salary advance repayment",
+      "amount": "100.00",
+      "taxable": false,
+      "pensionable": false
+    }
+  ]
 }
 ```
 

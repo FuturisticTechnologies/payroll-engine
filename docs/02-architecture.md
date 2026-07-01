@@ -24,6 +24,7 @@ FastAPI API
         |-- routing and validation
         |-- auth and RBAC schema
         |-- tenant-aware payroll framework
+        |-- basic payroll calculation engine
         |-- security headers and request IDs
         |
         v
@@ -31,6 +32,8 @@ PostgreSQL 16
         |-- tenants
         |-- employees
         |-- employment contracts
+        |-- pay periods and pay runs
+        |-- payroll ledger entries
         |-- RBAC tables
         |-- audit logs
         |-- row-level security policies
@@ -47,14 +50,16 @@ background jobs.
 - Signals for local component state.
 - `HttpClient` wrapper in `ApiService`.
 - `OnPush` change detection.
-- Current pages: dashboard, employees, payroll framework and system health.
+- Current pages: dashboard, employees, payroll framework, payroll runs and
+  system health.
 
 ### 3.2 Backend - FastAPI
 
 - `app/api/v1/` owns HTTP endpoint routing.
 - `app/models/` owns persistence models.
 - `app/schemas/` owns request and response validation.
-- `app/core/` owns configuration, database, security, tenancy and idempotency helpers.
+- `app/core/` owns configuration, database, security, tenancy, idempotency and
+  payroll calculation helpers.
 - OpenAPI docs are generated at `/docs`, `/redoc` and `/openapi.json`.
 
 ### 3.3 Database - PostgreSQL 16
@@ -63,11 +68,13 @@ background jobs.
 - `20260410_0001` creates users, employees and audit logs.
 - `20260501_0002` creates tenants, RBAC, employment contracts, idempotency keys
   and tenant row-level security policies.
+- `20260601_0003` creates pay periods, payroll runs, line items and immutable
+  payroll ledger entries.
 - Monetary values use fixed-precision `NUMERIC`, never floats.
 
 ### 3.4 Cache and Queue - Redis 7
 
-Redis is part of the runtime topology. M2 does not yet enforce Redis-backed
+Redis is part of the runtime topology. M3 does not yet enforce Redis-backed
 rate limiting; it remains the planned primitive for sessions, throttling and
 background payroll jobs.
 
@@ -87,7 +94,9 @@ auditable request/response records.
    performs ORM reads/writes.
 6. Create endpoints reserve an idempotency row before the resource write and
    complete it in the same transaction.
-7. Pydantic response models serialise the result.
+7. Pay-run creation invokes the M3 calculation engine, persists employee lines
+   and appends hash-chain ledger evidence.
+8. Pydantic response models serialise the result.
 
 ## 5. Deployment Topology
 
@@ -108,6 +117,7 @@ auditable request/response records.
 | Security headers | FastAPI middleware |
 | Idempotency | `idempotency_keys` table |
 | Tenant isolation | `tenant_id` plus Postgres RLS |
+| Payroll ledger | Append-only `payroll_ledger_entries` hash chain |
 | Secrets | Vault or cloud KMS, never committed |
 | Metrics | Prometheus planned in M12 |
 | Tracing | OpenTelemetry planned in M12 |

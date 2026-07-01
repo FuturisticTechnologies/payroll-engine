@@ -9,6 +9,11 @@ models needed before the payroll calculation engine begins.
 tenants
   |-- employees
   |     `-- employment_contracts
+  |-- pay_periods
+  |     `-- pay_runs
+  |          |-- payroll_run_lines
+  |          |    `-- payroll_line_items
+  |          `-- payroll_ledger_entries
   |-- user_tenant_roles -- users
   |
 roles -- role_permissions -- permissions
@@ -161,13 +166,45 @@ Tenant-scoped policies use `current_setting('app.tenant_id', true)` as the
 runtime tenant context. Auth dependencies set the tenant and superuser database
 settings before tenant-scoped ORM work runs.
 
-## 9. Upcoming Entities
+## 9. Milestone 3 Payroll Engine
 
-- `pay_periods`
-- `pay_runs`
+### `pay_periods`
+
+Tenant payroll cycles by tax year, pay frequency and period number.
+
+### `pay_runs`
+
+Calculated payroll run aggregate for a pay period.
+
+| Column | Type | Notes |
+|---|---|---|
+| `tenant_id` | `uuid` | Tenant isolation boundary |
+| `pay_period_id` | `uuid` | FK to `pay_periods` |
+| `status` | `varchar(20)` | `calculated` in M3 |
+| `employee_count` | `integer` | Number of calculated employee lines |
+| `gross_earnings` | `numeric(14,2)` | Base salary plus manual earnings |
+| `total_deductions` | `numeric(14,2)` | Manual deductions |
+| `net_pay` | `numeric(14,2)` | Gross less deductions |
+| `ledger_entry_hash` | `varchar(64)` | Hash of the latest ledger entry for this run |
+
+### `payroll_run_lines`
+
+Employee-level calculation results for a pay run. M3 stores base salary,
+additional earnings, deductions and net pay. PAYE and NI fields arrive in M4-M5.
+
+### `payroll_line_items`
+
+Evidence rows for base salary, manual earnings and manual deductions.
+
+### `payroll_ledger_entries`
+
+Append-only hash-chain evidence for calculated pay runs. Each entry stores a
+canonical payload hash, previous hash and entry hash. The M3 Postgres migration
+adds a trigger that rejects updates and deletes against ledger entries.
+
+## 10. Upcoming Entities
+
 - `payslips`
-- `earnings_lines`
-- `deductions`
 - `tax_code_history`
 - `ni_reference_data`
 - `statutory_payments`

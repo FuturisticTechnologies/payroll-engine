@@ -29,6 +29,9 @@ import { AuthService } from './core/services/auth.service';
           <a routerLink="/framework" routerLinkActive="pf-nav__item--active" class="pf-nav__item">
             Payroll framework
           </a>
+          <a routerLink="/pay-runs" routerLinkActive="pf-nav__item--active" class="pf-nav__item">
+            Payroll runs
+          </a>
           <a routerLink="/health" routerLinkActive="pf-nav__item--active" class="pf-nav__item">
             System health
           </a>
@@ -38,7 +41,7 @@ import { AuthService } from './core/services/auth.service';
           @if (auth.authenticated()) {
             <button type="button" class="pf-logout" (click)="logout()">Sign out</button>
           }
-          <small>Milestone 2 - May&nbsp;2026</small>
+          <small>Milestone 3 - Jun&nbsp;2026</small>
         </footer>
       </aside>
 

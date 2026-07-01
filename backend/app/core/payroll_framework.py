@@ -106,6 +106,10 @@ SYSTEM_PERMISSIONS = [
         "description": "Maintain employment contracts and pay frequencies.",
     },
     {
+        "code": "payroll:read",
+        "description": "Read payroll periods, runs and ledger evidence.",
+    },
+    {
         "code": "payroll:run",
         "description": "Execute payroll calculations and pay runs.",
     },
@@ -118,15 +122,17 @@ ROLE_PERMISSION_CODES = {
         "employees:read",
         "employees:write",
         "contracts:manage",
+        "payroll:read",
         "payroll:run",
     ],
     "payroll_admin": [
         "employees:read",
         "employees:write",
         "contracts:manage",
+        "payroll:read",
         "payroll:run",
     ],
-    "payroll_viewer": ["employees:read"],
+    "payroll_viewer": ["employees:read", "payroll:read"],
     "employee_self_service": ["employees:read"],
 }
 

@@ -13,6 +13,7 @@ changes.
 |---|---|---|
 | [Developer workflow](./developer-workflow.md) | DevOps | M1 |
 | [Data dictionary](./data-dictionary.md) | Data Analyst | M2 |
+| [Reconciliation export](./reconciliation-export.md) | Data Analyst | M3 |
 
 Add a row when you add a document. If a handbook page and a numbered
 deliverable disagree, the deliverable is the contract and the handbook is

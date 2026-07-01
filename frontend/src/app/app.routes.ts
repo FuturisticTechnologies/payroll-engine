@@ -28,6 +28,12 @@ export const appRoutes: Routes = [
       import('./features/framework/framework.component').then((m) => m.FrameworkComponent),
   },
   {
+    path: 'pay-runs',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/pay-runs/pay-runs.component').then((m) => m.PayRunsComponent),
+  },
+  {
     path: 'health',
     loadComponent: () =>
       import('./features/health/health.component').then((m) => m.HealthComponent),
