@@ -1,0 +1,82 @@
+# ---------- OS ----------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------- Editors ----------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ---------- Env & secrets ----------
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+secrets/
+
+# ---------- Python / FastAPI ----------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+ENV/
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.pytype/
+dist/
+build/
+*.egg-info/
+*.egg
+
+# ---------- Alembic ----------
+backend/app/db/migrations/versions/*.pyc
+
+# ---------- Node / Angular ----------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.angular/
+.pnpm-store/
+dist/
+tmp/
+out-tsc/
+.nyc_output/
+coverage/
+*.log
+
+# ---------- Docker ----------
+docker-compose.override.yml
+
+# ---------- Data / logs ----------
+logs/
+*.log
+*.sqlite
+*.sqlite3
+*.db
+pgdata/
+redisdata/
+
+# ---------- Misc ----------
+.DS_Store
+*.bak
+*.tmp
+.cache/
