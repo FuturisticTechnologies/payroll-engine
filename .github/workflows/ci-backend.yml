@@ -76,5 +76,15 @@ jobs:
       - name: Apply migrations
         run: alembic upgrade head
 
+      # Runtime, not coverage (M3-12). The pack logged in once per test, and
+      # the bcrypt verify that costs was larger than every calculation under
+      # test put together. It is now once per session: 5.57s -> 3.48s locally
+      # over the same 95 tests.
+      #
+      # Deliberately not `-n auto`. pytest-xdist is installed and the fixtures
+      # are worker-safe - each worker takes its own database - but measured on
+      # this pack it is slower, because starting the workers costs more than a
+      # three second suite. Turn it on with `-n auto --dist loadfile` when the
+      # serial run passes roughly a minute, not before.
       - name: Run tests
-        run: pytest
+        run: pytest --durations=10
