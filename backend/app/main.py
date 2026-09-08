@@ -20,6 +20,15 @@ from app.api.v1.router import api_router
 from app.core.config import get_settings
 from app.core.database import init_local_database
 from app.core.logging import configure_logging, get_logger
+from app.core.openapi import (
+    CONTACT,
+    LICENSE,
+    OPENAPI_TAGS,
+    SERVERS,
+    SERVICE_DESCRIPTION,
+    SERVICE_SUMMARY,
+    SERVICE_TITLE,
+)
 
 settings = get_settings()
 configure_logging(settings.app_env, settings.app_debug)
@@ -76,12 +85,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(
-    title="PayrollFuturistic API",
-    description=(
-        "UK-compliant payroll SaaS platform. HMRC (PAYE, NI, RTI), "
-        "statutory payments, pension auto-enrolment, UK GDPR."
-    ),
+    title=SERVICE_TITLE,
+    summary=SERVICE_SUMMARY,
+    description=SERVICE_DESCRIPTION,
     version=__version__,
+    contact=CONTACT,
+    license_info=LICENSE,
+    openapi_tags=OPENAPI_TAGS,
+    servers=SERVERS,
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json",
@@ -152,8 +163,10 @@ app.include_router(api_router, prefix="/api/v1")
 @app.get("/", include_in_schema=False)
 async def root() -> dict[str, str]:
     return {
-        "name": "PayrollFuturistic API",
+        "name": SERVICE_TITLE,
         "version": __version__,
         "docs": "/docs",
+        "redoc": "/redoc",
+        "openapi": "/openapi.json",
         "health": "/api/v1/health",
     }

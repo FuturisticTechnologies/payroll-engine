@@ -1,6 +1,7 @@
 """Liveness + meta endpoint smoke tests."""
 from __future__ import annotations
 
+from app.core.openapi import OPENAPI_TAGS, SERVICE_TITLE
 from fastapi.testclient import TestClient
 
 
@@ -8,7 +9,7 @@ def test_root(client: TestClient) -> None:
     response = client.get("/")
     assert response.status_code == 200
     body = response.json()
-    assert body["name"] == "PayrollFuturistic API"
+    assert body["name"] == SERVICE_TITLE
     assert "version" in body
 
 
@@ -52,3 +53,28 @@ def test_openapi_schema(client: TestClient) -> None:
     response = client.get("/openapi.json")
     assert response.status_code == 200
     assert "paths" in response.json()
+
+
+def test_openapi_document_identifies_this_service(client: TestClient) -> None:
+    """Every milestone repo publishes the same product at a different point in
+    its life. A generic title makes five deployments indistinguishable, so the
+    title, the summary and the tag descriptions are part of the contract."""
+    document = client.get("/openapi.json").json()
+
+    assert document["info"]["title"] == SERVICE_TITLE
+    assert document["info"]["summary"]
+    assert document["info"]["description"]
+
+    # Relative, so "Try it out" targets whichever host served the page.
+    assert document["servers"] == [{"url": "/", "description": "This deployment."}]
+
+    documented = {tag["name"] for tag in document["tags"]}
+    assert documented == {tag["name"] for tag in OPENAPI_TAGS}
+    assert all(tag["description"] for tag in document["tags"])
+
+    # Every tag the router mounts must be described, or the UI renders a
+    # heading with nothing under it explaining what the group is for.
+    used = {tag for path in document["paths"].values()
+            for operation in path.values()
+            for tag in operation.get("tags", [])}
+    assert used <= documented, f"undocumented tags: {sorted(used - documented)}"
