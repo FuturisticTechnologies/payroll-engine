@@ -9,6 +9,8 @@
 # executes anywhere it matters. New behaviour goes in a new revision.
 #
 # Adding a brand-new revision file is always allowed.
+#
+# Segmented comments according to the functioanlity
 set -euo pipefail
 
 status=0
