@@ -40,7 +40,7 @@ class EmploymentContractCreate(BaseModel):
     @classmethod
     def _normalize_currency(cls, v: str) -> str:
         if not isinstance(v, str):
-            raise TypeError("Currency must be a string")
+            raise ValueError("Currency must be a string")
         return v.strip().upper()
 
     @model_validator(mode="after")
