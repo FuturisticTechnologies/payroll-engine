@@ -377,9 +377,8 @@ pre-commit run --all-files
   `DATABASE_URL_SYNC` points at SQLite. The migrations are PostgreSQL-only; with
   SQLite, skip Alembic and just start the backend.
 - **The frontend loads but every API call fails.** The development build always
-  calls `http://127.0.0.1:8000/api/v1`; `BACKEND_PORT` and
-  `FRONTEND_API_BASE_URL` do not change it (nothing reads
-  `FRONTEND_API_BASE_URL`). Keep the backend on 8000, and add any other origin
+  calls `http://127.0.0.1:8000/api/v1`; `BACKEND_PORT` does not change it.
+  Keep the backend on 8000, and add any other origin
   you serve the frontend from to `APP_CORS_ORIGINS`.
 - **`port is already allocated`, or Postgres rejects the password.** Another
   service (often a native PostgreSQL on 5432) holds the port: stop it or change
