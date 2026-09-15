@@ -208,6 +208,11 @@ async def init_local_database() -> None:
                 )
 
             await session.commit()
+    except OSError as exc:
+        # asyncpg raises ConnectionRefusedError (an OSError) unwrapped when the
+        # server is down. Start anyway: liveness passes, /health/ready reports
+        # the database, and the seed runs on the next start.
+        log.warning("database.seed_skipped_unreachable", error=str(exc))
     except SQLAlchemyError:
         # Nobody can log in without the seed, so a failure must be visible
         # rather than leave the app running with no admin.

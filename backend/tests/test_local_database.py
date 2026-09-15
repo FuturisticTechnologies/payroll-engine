@@ -77,3 +77,18 @@ async def test_failed_seed_is_logged_as_an_error(
     await database.init_local_database()
 
     assert recording_log.records == [("error", "database.seed_failed")]
+
+
+async def test_unreachable_database_does_not_stop_startup(
+    monkeypatch: pytest.MonkeyPatch,
+    recording_log: _RecordingLog,
+) -> None:
+    # asyncpg raises this unwrapped, not as a SQLAlchemyError, when nothing
+    # listens on the Postgres port.
+    refused = ConnectionRefusedError(10061, "Connect call failed ('127.0.0.1', 5432)")
+    monkeypatch.setattr(database, "is_sqlite", False)
+    monkeypatch.setattr(database, "AsyncSessionLocal", _session_factory_raising(refused))
+
+    await database.init_local_database()
+
+    assert recording_log.records == [("warning", "database.seed_skipped_unreachable")]

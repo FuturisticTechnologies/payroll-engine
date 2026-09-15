@@ -238,8 +238,9 @@ other than `production`, `init_local_database()` in
 - the admin user from `LOCAL_ADMIN_EMAIL` / `LOCAL_ADMIN_PASSWORD`, as super
   admin and tenant owner.
 
-If the database is unreachable at startup the seed is skipped without an error;
-restart the backend once the database is up.
+If the database is unreachable at startup the backend still starts: it logs a
+`database.seed_skipped_unreachable` warning and `/api/v1/health/ready` reports
+not ready. Restart the backend once the database is up to run the seed.
 
 **New migrations** are append-only:
 
