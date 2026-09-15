@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
+from app.api.v1.pagination import PageLimit, PageOffset
 from app.core.database import set_tenant_context
 from app.core.idempotency import (
     complete_idempotency_reservation,
@@ -58,8 +59,8 @@ async def _tenant_for_request(
 async def list_pay_runs(
     access: AccessContext = Depends(require_permission("payroll:read")),
     tenant_id: UUID | None = None,
-    limit: int = 100,
-    offset: int = 0,
+    limit: PageLimit = 100,
+    offset: PageOffset = 0,
 ) -> list[PayRunSummaryRead]:
     resolved_tenant_id = await _tenant_for_request(access, tenant_id)
     stmt = (

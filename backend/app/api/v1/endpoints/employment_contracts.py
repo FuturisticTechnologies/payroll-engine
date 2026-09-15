@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 
+from app.api.v1.pagination import PageLimit, PageOffset
 from app.core.database import set_tenant_context
 from app.core.idempotency import (
     complete_idempotency_reservation,
@@ -95,8 +96,8 @@ async def list_contracts(
     access: AccessContext = Depends(require_permission("contracts:manage")),
     employee_id: UUID | None = None,
     tenant_id: UUID | None = None,
-    limit: int = 100,
-    offset: int = 0,
+    limit: PageLimit = 100,
+    offset: PageOffset = 0,
 ) -> list[EmploymentContractRead]:
     db = access.db
     resolved_tenant_id = await _tenant_for_request(access, tenant_id)
