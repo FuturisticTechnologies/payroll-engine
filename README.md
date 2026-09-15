@@ -332,9 +332,10 @@ npm run build -- --configuration production
 ```
 
 `npm test` needs Chrome (set `CHROME_BIN` if it is not in the default location).
-`npm run lint` exists in `package.json` but fails with `Cannot find "lint"
-target` - no ESLint builder is configured in `angular.json` - and CI does not
-run it.
+There is no frontend linter: `angular.json` has no ESLint builder, so
+`package.json` has no `lint` script, `make frontend-lint` only says so, and CI
+does not lint the frontend. `make backend-lint` runs what CI runs: `ruff check
+app tests` (blocking) and `mypy app` (reported, non-blocking).
 
 Security scans (`.github/workflows/ci-security.yml`, report-only):
 `pip install pip-audit` then `pip-audit -r requirements.txt` from `backend/`, and
