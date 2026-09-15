@@ -201,18 +201,17 @@ docker compose exec backend alembic current
 then migrate (from the repository root):
 
 ```bash
-psql -U postgres -c "CREATE ROLE payroll WITH LOGIN SUPERUSER PASSWORD 'payroll_dev_pwd';"
+psql -U postgres -c "CREATE ROLE payroll WITH LOGIN PASSWORD 'payroll_dev_pwd';"
 psql -U postgres -c "CREATE DATABASE payroll OWNER payroll;"
 psql -U payroll -d payroll -f infra/postgres/init.sql
 cd backend
 alembic upgrade head
 ```
 
-The role is a superuser for the same reason it is one in Compose (the
-`POSTGRES_USER` of the official image): the tables use forced row-level
-security, and the startup seed writes to `tenants` without a tenant context.
-With a role that cannot bypass RLS the seed fails silently and the admin login
-returns 401. Do this on a local database only.
+The role does not need to be a superuser. The tables use forced row-level
+security, and the startup seed sets the default tenant's context
+(`app.tenant_id`) while it writes, so an ordinary owner role works. If the seed
+fails anyway the backend logs `database.seed_failed` at ERROR with the cause.
 
 **SQLite (no database server).** For a quick native run, replace the two
 database URLs in `backend/.env`:
@@ -239,8 +238,9 @@ other than `production`, `init_local_database()` in
 - the admin user from `LOCAL_ADMIN_EMAIL` / `LOCAL_ADMIN_PASSWORD`, as super
   admin and tenant owner.
 
-If the database is unreachable at startup the seed is skipped without an error;
-restart the backend once the database is up.
+If the database is unreachable at startup the backend still starts: it logs a
+`database.seed_skipped_unreachable` warning and `/api/v1/health/ready` reports
+not ready. Restart the backend once the database is up to run the seed.
 
 **New migrations** are append-only:
 
@@ -321,6 +321,7 @@ pytest --durations=10
 
 (In PowerShell set the variables with `$env:APP_ENV = "test"` and so on.) CI
 runs the suite serially; `pytest-xdist` is installed but CI does not pass `-n`.
+`pytest -n auto --dist loadfile` also passes locally.
 
 Frontend, as `.github/workflows/ci-frontend.yml` runs it (Node 20), from
 `frontend/`:
@@ -332,9 +333,10 @@ npm run build -- --configuration production
 ```
 
 `npm test` needs Chrome (set `CHROME_BIN` if it is not in the default location).
-`npm run lint` exists in `package.json` but fails with `Cannot find "lint"
-target` - no ESLint builder is configured in `angular.json` - and CI does not
-run it.
+There is no frontend linter: `angular.json` has no ESLint builder, so
+`package.json` has no `lint` script, `make frontend-lint` only says so, and CI
+does not lint the frontend. `make backend-lint` runs what CI runs: `ruff check
+app tests` (blocking) and `mypy app` (reported, non-blocking).
 
 Security scans (`.github/workflows/ci-security.yml`, report-only):
 `pip install pip-audit` then `pip-audit -r requirements.txt` from `backend/`, and
@@ -368,17 +370,16 @@ pre-commit run --all-files
   from another machine fails with `No Python at ...` - delete and recreate it.
 - **Login returns 401 but `/api/v1/health` is fine.** `/health` never touches
   the database; check `/api/v1/health/ready`. The admin is only seeded when the
-  database is reachable at startup (and, on native Postgres, when the role can
-  bypass RLS - see [section 5](#5-database)). Fix the database and restart the
+  database is reachable at startup, and a seed that fails is logged as
+  `database.seed_failed` with the cause. Fix the database and restart the
   backend. Changing `LOCAL_ADMIN_PASSWORD` later does not update an existing
   user; reset the database instead.
 - **`alembic upgrade head` fails with `near "EXTENSION": syntax error`.**
   `DATABASE_URL_SYNC` points at SQLite. The migrations are PostgreSQL-only; with
   SQLite, skip Alembic and just start the backend.
 - **The frontend loads but every API call fails.** The development build always
-  calls `http://127.0.0.1:8000/api/v1`; `BACKEND_PORT` and
-  `FRONTEND_API_BASE_URL` do not change it (nothing reads
-  `FRONTEND_API_BASE_URL`). Keep the backend on 8000, and add any other origin
+  calls `http://127.0.0.1:8000/api/v1`; `BACKEND_PORT` does not change it.
+  Keep the backend on 8000, and add any other origin
   you serve the frontend from to `APP_CORS_ORIGINS`.
 - **`port is already allocated`, or Postgres rejects the password.** Another
   service (often a native PostgreSQL on 5432) holds the port: stop it or change

@@ -13,10 +13,12 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from app.core.config import get_settings
+from app.core.logging import get_logger
 from app.models import Base
 from app.models.user import User
 
 settings = get_settings()
+log = get_logger(__name__)
 
 is_sqlite = settings.database_url.startswith("sqlite")
 
@@ -115,6 +117,9 @@ async def init_local_database() -> None:
                 await _migrate_sqlite_m2(connection)
 
         async with AsyncSessionLocal() as session:
+            # tenants and user_tenant_roles use FORCE ROW LEVEL SECURITY: a role
+            # that cannot bypass RLS reads and writes nothing there without this.
+            await set_tenant_context(session, DEFAULT_TENANT_ID)
             tenant = await session.get(Tenant, DEFAULT_TENANT_ID)
             if tenant is None:
                 result = await session.execute(
@@ -203,10 +208,15 @@ async def init_local_database() -> None:
                 )
 
             await session.commit()
+    except OSError as exc:
+        # asyncpg raises ConnectionRefusedError (an OSError) unwrapped when the
+        # server is down. Start anyway: liveness passes, /health/ready reports
+        # the database, and the seed runs on the next start.
+        log.warning("database.seed_skipped_unreachable", error=str(exc))
     except SQLAlchemyError:
-        # Liveness can still pass when a native dev database is not running;
-        # readiness remains the source of truth for DB availability.
-        return
+        # Nobody can log in without the seed, so a failure must be visible
+        # rather than leave the app running with no admin.
+        log.exception("database.seed_failed")
 
 
 async def _migrate_sqlite_m2(connection) -> None:  # type: ignore[no-untyped-def]

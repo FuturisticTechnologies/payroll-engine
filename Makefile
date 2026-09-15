@@ -35,8 +35,8 @@ backend-sh: ## Shell into the backend container
 backend-test: ## Run backend tests inside the container
 	docker compose exec backend pytest -q
 
-backend-lint: ## Ruff + mypy
-	docker compose exec backend sh -c "ruff check app tests && mypy app"
+backend-lint: ## Ruff (blocking) + mypy (non-blocking), as CI runs them
+	docker compose exec backend sh -c "ruff check app tests && { mypy app || echo 'mypy reported errors (non-blocking, as in CI)'; }"
 
 migrate: ## Apply database migrations
 	docker compose exec backend alembic upgrade head
@@ -51,8 +51,8 @@ frontend-sh: ## Shell into the frontend container
 frontend-test: ## Run frontend unit tests
 	docker compose exec frontend npm test -- --watch=false --browsers=ChromeHeadlessNoSandbox
 
-frontend-lint: ## Angular ESLint
-	docker compose exec frontend npm run lint
+frontend-lint: ## No frontend linter is configured
+	@echo "No frontend linter configured: angular.json has no ESLint builder and CI does not lint the frontend."
 
 # ---------- Aggregate ----------
 lint: backend-lint frontend-lint ## Lint everything
