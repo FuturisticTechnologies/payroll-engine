@@ -159,10 +159,13 @@ def test_pay_run_ledger_links_successive_runs_for_tenant(
     auth_headers: dict[str, str],
 ) -> None:
     employee = _create_employee_with_contract(client, auth_headers)
+    # Pay periods are unique per tenant, and the tests above draw their years
+    # from 2060-2099, so this one keeps to 2040-2059.
+    first_year = 2040 + 2 * (uuid4().int % 10)
 
     first = client.post(
         "/api/v1/pay-runs",
-        json=_pay_run_payload(employee["id"], 2071),
+        json=_pay_run_payload(employee["id"], first_year),
         headers=auth_headers,
     )
     assert first.status_code == 201
@@ -170,7 +173,7 @@ def test_pay_run_ledger_links_successive_runs_for_tenant(
 
     second = client.post(
         "/api/v1/pay-runs",
-        json=_pay_run_payload(employee["id"], 2072),
+        json=_pay_run_payload(employee["id"], first_year + 1),
         headers=auth_headers,
     )
     assert second.status_code == 201
