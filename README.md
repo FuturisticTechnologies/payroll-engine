@@ -201,18 +201,17 @@ docker compose exec backend alembic current
 then migrate (from the repository root):
 
 ```bash
-psql -U postgres -c "CREATE ROLE payroll WITH LOGIN SUPERUSER PASSWORD 'payroll_dev_pwd';"
+psql -U postgres -c "CREATE ROLE payroll WITH LOGIN PASSWORD 'payroll_dev_pwd';"
 psql -U postgres -c "CREATE DATABASE payroll OWNER payroll;"
 psql -U payroll -d payroll -f infra/postgres/init.sql
 cd backend
 alembic upgrade head
 ```
 
-The role is a superuser for the same reason it is one in Compose (the
-`POSTGRES_USER` of the official image): the tables use forced row-level
-security, and the startup seed writes to `tenants` without a tenant context.
-With a role that cannot bypass RLS the seed fails silently and the admin login
-returns 401. Do this on a local database only.
+The role does not need to be a superuser. The tables use forced row-level
+security, and the startup seed sets the default tenant's context
+(`app.tenant_id`) while it writes, so an ordinary owner role works. If the seed
+fails anyway the backend logs `database.seed_failed` at ERROR with the cause.
 
 **SQLite (no database server).** For a quick native run, replace the two
 database URLs in `backend/.env`:
@@ -368,8 +367,8 @@ pre-commit run --all-files
   from another machine fails with `No Python at ...` - delete and recreate it.
 - **Login returns 401 but `/api/v1/health` is fine.** `/health` never touches
   the database; check `/api/v1/health/ready`. The admin is only seeded when the
-  database is reachable at startup (and, on native Postgres, when the role can
-  bypass RLS - see [section 5](#5-database)). Fix the database and restart the
+  database is reachable at startup, and a seed that fails is logged as
+  `database.seed_failed` with the cause. Fix the database and restart the
   backend. Changing `LOCAL_ADMIN_PASSWORD` later does not update an existing
   user; reset the database instead.
 - **`alembic upgrade head` fails with `near "EXTENSION": syntax error`.**
