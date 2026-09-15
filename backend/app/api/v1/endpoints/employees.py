@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
+from app.api.v1.pagination import PageLimit, PageOffset
 from app.core.database import set_tenant_context
 from app.core.idempotency import (
     complete_idempotency_reservation,
@@ -45,8 +46,8 @@ async def _tenant_for_request(
 @router.get("", response_model=list[EmployeeRead])
 async def list_employees(
     access: AccessContext = Depends(require_permission("employees:read")),
-    limit: int = 100,
-    offset: int = 0,
+    limit: PageLimit = 100,
+    offset: PageOffset = 0,
     tenant_id: UUID | None = None,
 ) -> list[EmployeeRead]:
     db = access.db

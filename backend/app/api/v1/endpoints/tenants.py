@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
+from app.api.v1.pagination import PageLimit, PageOffset
 from app.core.idempotency import (
     complete_idempotency_reservation,
     lookup_idempotency_key,
@@ -21,8 +22,8 @@ router = APIRouter()
 @router.get("", response_model=list[TenantRead])
 async def list_tenants(
     access: AccessContext = Depends(require_permission("tenants:manage")),
-    limit: int = 100,
-    offset: int = 0,
+    limit: PageLimit = 100,
+    offset: PageOffset = 0,
 ) -> list[TenantRead]:
     stmt = select(Tenant).order_by(Tenant.created_at.desc()).limit(limit).offset(offset)
     result = await access.db.execute(stmt)

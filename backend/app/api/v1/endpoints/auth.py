@@ -42,9 +42,9 @@ async def login(
     payload: LoginRequest,
     db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:
-    from sqlalchemy import select
+    from sqlalchemy import func, select
 
-    stmt = select(User).where(User.email == payload.email)
+    stmt = select(User).where(func.lower(User.email) == payload.email.lower())
     result = await db.execute(stmt)
     user = result.scalar_one_or_none()
 

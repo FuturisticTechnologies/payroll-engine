@@ -38,7 +38,7 @@ class EmployeeBase(BaseModel):
     @classmethod
     def _normalize_ni(cls, v: str) -> str:
         if not isinstance(v, str):
-            raise TypeError("NI number must be a string")
+            raise ValueError("NI number must be a string")
         cleaned = v.replace(" ", "").upper()
         if not _NI_RE.fullmatch(cleaned):
             raise ValueError("Invalid UK National Insurance number")
@@ -48,7 +48,7 @@ class EmployeeBase(BaseModel):
     @classmethod
     def _normalize_tax_code(cls, v: str) -> str:
         if not isinstance(v, str):
-            raise TypeError("Tax code must be a string")
+            raise ValueError("Tax code must be a string")
         cleaned = v.strip().upper()
         if not _TAX_CODE_RE.fullmatch(cleaned):
             raise ValueError("Invalid UK tax code")
@@ -58,7 +58,7 @@ class EmployeeBase(BaseModel):
     @classmethod
     def _normalize_ni_category(cls, v: str) -> str:
         if not isinstance(v, str):
-            raise TypeError("NI category must be a string")
+            raise ValueError("NI category must be a string")
         cleaned = v.strip().upper()
         if cleaned not in NI_CATEGORY_CODES:
             raise ValueError("Unsupported NI category")

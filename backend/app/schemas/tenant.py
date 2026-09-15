@@ -26,7 +26,7 @@ class TenantBase(BaseModel):
     @classmethod
     def _normalize_slug(cls, v: str) -> str:
         if not isinstance(v, str):
-            raise TypeError("Slug must be a string")
+            raise ValueError("Slug must be a string")
         cleaned = v.strip().lower()
         if not _SLUG_RE.fullmatch(cleaned):
             raise ValueError("Slug must contain lowercase letters, numbers and hyphens")

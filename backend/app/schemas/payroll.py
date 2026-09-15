@@ -26,7 +26,7 @@ class PayrollAdjustmentCreate(BaseModel):
     @classmethod
     def _normalize_code(cls, value: str) -> str:
         if not isinstance(value, str):
-            raise TypeError("Code must be a string")
+            raise ValueError("Code must be a string")
         return value.strip().upper()
 
 
