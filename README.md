@@ -321,6 +321,7 @@ pytest --durations=10
 
 (In PowerShell set the variables with `$env:APP_ENV = "test"` and so on.) CI
 runs the suite serially; `pytest-xdist` is installed but CI does not pass `-n`.
+`pytest -n auto --dist loadfile` also passes locally.
 
 Frontend, as `.github/workflows/ci-frontend.yml` runs it (Node 20), from
 `frontend/`:
