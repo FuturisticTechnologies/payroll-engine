@@ -11,6 +11,7 @@ from uuid import UUID
 import pytest
 from app.core import database
 from app.core.payroll_framework import DEFAULT_TENANT_ID
+from fastapi.testclient import TestClient
 from sqlalchemy.exc import ProgrammingError
 
 
@@ -39,12 +40,19 @@ def _session_factory_raising(exc: BaseException) -> Any:
     return factory
 
 
-async def test_seed_runs_under_the_default_tenant_context(
+def test_seed_runs_under_the_default_tenant_context(
+    client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
     recording_log: _RecordingLog,
 ) -> None:
     # tenants and user_tenant_roles use FORCE ROW LEVEL SECURITY, so on
     # Postgres without a superuser the seed only sees its own tenant's rows.
+    #
+    # Driven through the client's portal rather than as an async test: the
+    # engine's pooled asyncpg connections belong to the loop the app started
+    # on, and awaiting them from a second loop fails with "attached to a
+    # different loop". SQLite does not care, so a bare async test passes
+    # locally and fails against CI's Postgres.
     contexts: list[UUID] = []
     set_tenant_context = database.set_tenant_context
 
@@ -54,7 +62,7 @@ async def test_seed_runs_under_the_default_tenant_context(
 
     monkeypatch.setattr(database, "set_tenant_context", spy)
 
-    await database.init_local_database()
+    client.portal.call(database.init_local_database)
 
     assert contexts == [DEFAULT_TENANT_ID]
     assert recording_log.records == []
