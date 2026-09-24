@@ -13,6 +13,11 @@ from app.core.payroll_framework import PAY_FREQUENCIES, PAY_FREQUENCY_CODES
 PayrollItemType = Literal["earning", "deduction"]
 
 
+def uk_tax_year_bounds(tax_year: int) -> tuple[date, date]:
+    """First and last day of the UK tax year that starts in ``tax_year``."""
+    return date(tax_year, 4, 6), date(tax_year + 1, 4, 5)
+
+
 class PayrollAdjustmentCreate(BaseModel):
     employee_id: UUID
     item_type: PayrollItemType
@@ -52,6 +57,17 @@ class PayRunCreate(BaseModel):
     def _dates_and_selection_are_valid(self) -> PayRunCreate:
         if self.period_end < self.period_start:
             raise ValueError("period_end cannot be before period_start")
+        # Pay periods are keyed on (tax_year, frequency, period_number), so a
+        # tax_year that disagrees with the dates would let the same real period
+        # be run twice. RTI assigns a payment to the tax year of its payment
+        # date, so that is the date that has to agree.
+        tax_year_start, tax_year_end = uk_tax_year_bounds(self.tax_year)
+        if not tax_year_start <= self.payment_date <= tax_year_end:
+            raise ValueError(
+                f"payment_date must fall within tax year {self.tax_year}-"
+                f"{self.tax_year + 1} ({tax_year_start.isoformat()} to "
+                f"{tax_year_end.isoformat()})"
+            )
         if self.employee_ids == []:
             raise ValueError("employee_ids must be omitted or contain at least one employee")
         periods_per_tax_year = next(
