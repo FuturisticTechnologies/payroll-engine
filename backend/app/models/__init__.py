@@ -16,5 +16,6 @@ from app.models.payroll import (  # noqa: F401
     PayrollRunLine,
 )
 from app.models.rbac import Permission, Role, RolePermission, UserTenantRole  # noqa: F401
+from app.models.statutory import StatutoryPaymentRate  # noqa: F401
 from app.models.tenant import Tenant  # noqa: F401
 from app.models.user import User  # noqa: F401

@@ -207,6 +207,13 @@ async def init_local_database() -> None:
                     )
                 )
 
+            if is_sqlite:
+                # Postgres gets these rows from the Alembic migration; local
+                # SQLite is built with create_all, so seed them here (SNOV-442).
+                from app.core.statutory_reference import seed_local_statutory_rates
+
+                await seed_local_statutory_rates(session)
+
             await session.commit()
     except OSError as exc:
         # asyncpg raises ConnectionRefusedError (an OSError) unwrapped when the

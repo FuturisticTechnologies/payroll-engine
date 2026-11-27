@@ -1,0 +1,89 @@
+// DAX for the statutory reference data model - SNOV-442.
+// Tables: StatutoryRates (from StatutoryRates.pq) and 'Calendar' (below).
+// No relationship between them: rates are effective-dated ranges, so the
+// measures filter on the selected date instead of joining on it.
+
+// ---- Calculated table -------------------------------------------------------
+Calendar =
+ADDCOLUMNS (
+    CALENDAR ( DATE ( 2025, 4, 1 ), DATE ( 2027, 4, 30 ) ),
+    "Tax year", IF ( MONTH ( [Date] ) > 4 || ( MONTH ( [Date] ) = 4 && DAY ( [Date] ) >= 6 ),
+                     YEAR ( [Date] ), YEAR ( [Date] ) - 1 ),
+    "Month", FORMAT ( [Date], "yyyy-mm" )
+)
+
+// ---- Measures ---------------------------------------------------------------
+Selected Date = MAX ( 'Calendar'[Date] )
+
+Rows In Force =
+VAR d = [Selected Date]
+RETURN
+    COUNTROWS (
+        FILTER ( StatutoryRates,
+            StatutoryRates[effective_from] <= d
+                && ( ISBLANK ( StatutoryRates[effective_to] ) || StatutoryRates[effective_to] >= d ) )
+    )
+
+Weekly Flat Rate In Force =
+VAR d = [Selected Date]
+RETURN
+    CALCULATE ( MAX ( StatutoryRates[weekly_flat_rate] ),
+        FILTER ( StatutoryRates,
+            StatutoryRates[effective_from] <= d
+                && ( ISBLANK ( StatutoryRates[effective_to] ) || StatutoryRates[effective_to] >= d ) ) )
+
+AWE % In Force =
+VAR d = [Selected Date]
+RETURN
+    CALCULATE ( MAX ( StatutoryRates[awe_percentage] ),
+        FILTER ( StatutoryRates,
+            StatutoryRates[effective_from] <= d
+                && ( ISBLANK ( StatutoryRates[effective_to] ) || StatutoryRates[effective_to] >= d ) ) )
+
+LEL In Force =
+VAR d = [Selected Date]
+VAR lel =
+    CALCULATE ( MAX ( StatutoryRates[lower_earnings_limit_weekly] ),
+        FILTER ( StatutoryRates,
+            StatutoryRates[effective_from] <= d
+                && ( ISBLANK ( StatutoryRates[effective_to] ) || StatutoryRates[effective_to] >= d ) ) )
+RETURN IF ( [Rows In Force] > 0 && ISBLANK ( lel ), "No earnings test", FORMAT ( lel, "£#,0.00" ) )
+
+Waiting Days In Force =
+VAR d = [Selected Date]
+RETURN
+    CALCULATE ( MAX ( StatutoryRates[waiting_days] ),
+        FILTER ( StatutoryRates,
+            StatutoryRates[effective_from] <= d
+                && ( ISBLANK ( StatutoryRates[effective_to] ) || StatutoryRates[effective_to] >= d ) ) )
+
+Coverage Status =
+SWITCH ( TRUE (),
+    [Rows In Force] = 0, "NO DATA - payments would be refused",
+    [Rows In Force] > 1 && HASONEVALUE ( StatutoryRates[scheme_period] ), "OVERLAP - fix the reference data",
+    "OK" )
+
+// Year on year, per scheme / rate period in the visual
+Flat Rate Prior Year =
+VAR y = MAX ( StatutoryRates[tax_year] )
+RETURN
+    CALCULATE ( MAX ( StatutoryRates[weekly_flat_rate] ),
+        REMOVEFILTERS ( StatutoryRates[tax_year], StatutoryRates[tax_year_label] ),
+        StatutoryRates[tax_year] = y - 1 )
+
+Flat Rate Change = MAX ( StatutoryRates[weekly_flat_rate] ) - [Flat Rate Prior Year]
+
+Flat Rate Change % = DIVIDE ( [Flat Rate Change], [Flat Rate Prior Year] )
+
+// Worked example driven by a what-if parameter named "AWE" (Modeling > New parameter)
+Example Weekly Amount =
+VAR awe = SELECTEDVALUE ( AWE[AWE], 500 )
+VAR flat = [Weekly Flat Rate In Force]
+VAR pct = [AWE % In Force]
+VAR r = SELECTEDVALUE ( StatutoryRates[rate_rule] )
+VAR raw =
+    SWITCH ( r,
+        "flat_rate_only", flat,
+        "percentage_only", awe * pct,
+        "lower_of_flat_and_percentage", MIN ( flat, awe * pct ) )
+RETURN IF ( HASONEVALUE ( StatutoryRates[scheme_period] ), ROUNDUP ( raw, 2 ) )
