@@ -126,6 +126,35 @@ No `updated_at`, deliberately: there is no code path that updates an audit row.
 *different* body is a client bug and is rejected, rather than silently
 returning the first response.
 
+### `statutory_payment_rates` — HMRC reference data, not tenant data
+
+The one table here without `tenant_id`: SSP, SMP and SPP rates are the same
+for every employer, so there is no row-level security on it. Full detail and
+sources: [statutory payment reference data](./statutory-reference-data.md).
+
+| Column | Type | Null | Notes |
+|---|---|---|---|
+| `tax_year` | `int` | No | Year the tax year starts, e.g. `2026` for 2026/27 |
+| `scheme` | `varchar(3)` | No | `SSP` / `SMP` / `SPP` |
+| `rate_period` | `varchar(30)` | No | `standard`, or `first_6_weeks` / `remaining_weeks` for SMP |
+| `period_start_week` / `period_end_week` | `int` | No | Payment weeks this row covers |
+| `effective_from` / `effective_to` | `date` | No / Yes | Seeded rows always have both |
+| `awe_percentage` | `numeric(5,4)` | Yes | `0.8000` = 80% of average weekly earnings |
+| `weekly_flat_rate` | `numeric(10,2)` | Yes | **`Decimal`, never float** |
+| `rate_rule` | `varchar(40)` | No | `flat_rate_only` / `percentage_only` / `lower_of_flat_and_percentage` |
+| `lower_earnings_limit_weekly` | `numeric(10,2)` | Yes | `NULL` = no earnings test (SSP from 6 Apr 2026) |
+| `relevant_period_weeks` | `int` | No | AWE averaging period |
+| `qualifying_week_offset_weeks` | `int` | Yes | SMP/SPP: weeks before the expected week of childbirth |
+| `continuous_employment_weeks` | `int` | Yes | SMP/SPP service test |
+| `waiting_days` | `int` | No | SSP only; `0` from 6 Apr 2026 |
+| `max_entitlement_weeks` | `int` | No | 28 / 39 / 2 |
+| `payment_window_weeks` | `int` | Yes | SPP: must be paid within this many weeks of the birth |
+| `rounding` | `varchar(30)` | No | `round_up_penny` |
+| `source_reference` / `source_url` | `text` | No | The HMRC publication the row came from |
+
+Rows are never updated in place. A Postgres exclusion constraint stops two
+rows for the same scheme and rate period being in force on the same day.
+
 ## 4. Data protection
 
 | Column | Classification | Handling |

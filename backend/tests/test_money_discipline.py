@@ -22,9 +22,11 @@ MONEY_MODULES = [
     APP / "core" / "payroll_engine.py",
     APP / "core" / "paye.py",
     APP / "core" / "ni.py",
+    APP / "core" / "statutory_pay.py",
     APP / "models" / "payroll.py",
     APP / "models" / "paye.py",
     APP / "models" / "ni.py",
+    APP / "models" / "statutory.py",
 ]
 
 
